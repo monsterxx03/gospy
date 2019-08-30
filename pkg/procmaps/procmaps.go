@@ -1,3 +1,4 @@
+// Package procmaps is used to parse /proc/{pid}/maps file
 package procmaps
 
 import (
