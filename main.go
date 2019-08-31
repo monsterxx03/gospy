@@ -3,9 +3,11 @@ package main
 import (
 	"debug/elf"
 	"fmt"
-	"gospy/pkg/procmaps"
 	"os"
 	"strconv"
+
+	"gospy/pkg/procmaps"
+	"gospy/pkg/process"
 )
 
 func LoadBinary(path string) (*elf.File, error) {
@@ -54,5 +56,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	dumpStack(pid)
+	p := process.New(pid)
+	ts, err := p.Threads()
+	if err != nil {
+		panic(err)
+	}
 }
