@@ -6,8 +6,9 @@ import (
 	"os"
 	"strconv"
 
+	"gospy/pkg/binary"
+	"gospy/pkg/proc"
 	"gospy/pkg/procmaps"
-	"gospy/pkg/process"
 )
 
 func LoadBinary(path string) (*elf.File, error) {
@@ -19,6 +20,7 @@ func LoadBinary(path string) (*elf.File, error) {
 	if err != nil {
 		return nil, err
 	}
+	_elf.Symbols()
 	return _elf, nil
 }
 
@@ -56,9 +58,27 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	p := process.New(pid)
+	p := proc.New(pid)
 	ts, err := p.Threads()
 	if err != nil {
 		panic(err)
+	}
+	b, err := binary.Load(pid)
+	if err != nil {
+		panic(err)
+	}
+	for _, t := range ts {
+		if err := t.Lock(); err != nil {
+			panic(err)
+		}
+		defer t.Unlock()
+		regs, err := t.Registers()
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(t.ID, regs.Rip)
+		if err := b.Search(regs.Rip); err != nil {
+			panic(err)
+		}
 	}
 }
