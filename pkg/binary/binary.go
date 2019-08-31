@@ -1,6 +1,7 @@
 package binary
 
 import (
+	"debug/dwarf"
 	"debug/elf"
 	"debug/gosym"
 	"fmt"
@@ -30,16 +31,30 @@ func (b *Binary) Search(addr uint64) error {
 		println("wrong wrong line data")
 		return err
 	}
-	symdata, err := b.bin.Section(".gosymtab").Data()
-	if err != nil {
-		println("wrong symdata")
-		return err
-	}
 	ln := gosym.NewLineTable(lndata, b.bin.Section(".text").Addr)
-	symtab, err := gosym.NewTable(symdata, ln)
+	symtab, err := gosym.NewTable([]byte{}, ln)
 	if err != nil {
 		return err
 	}
 	fmt.Println("xxx", symtab.PCToFunc(addr).Sym.Name)
+	data, _ := b.bin.DWARF()
+	reader := data.Reader()
+	for {
+		entry, _ := reader.Next()
+		if entry == nil {
+			break
+		}
+		for _, f := range entry.Field {
+			switch f.Val.(type) {
+			case string:
+				if f.Val.(string) == "runtime.allgs" {
+					instructions, ok := entry.Val(dwarf.AttrLocation).([]byte)
+					if !ok {
+						panic(ok)
+					}
+				}
+			}
+		}
+	}
 	return nil
 }

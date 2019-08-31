@@ -80,5 +80,6 @@ func main() {
 		if err := b.Search(regs.Rip); err != nil {
 			panic(err)
 		}
+		break
 	}
 }
