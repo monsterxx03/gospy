@@ -44,11 +44,15 @@ func Load(pid int, exe string) (*Binary, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Binary{bin: b, SymTable: symtab}, err
+	return &Binary{bin: b, SymTable: symtab, addrCache: make(map[string]uint64)}, err
 }
 
 // GetVarAddr will search binary's DWARF info, to find virtual memory address of a global variable
 func (b *Binary) GetVarAddr(varName string) (uint64, error) {
+	val, ok := b.addrCache[varName]
+	if ok {
+		return val, nil
+	}
 	data, err := b.bin.DWARF()
 	if err != nil {
 		return 0, err
@@ -81,6 +85,7 @@ func (b *Binary) GetVarAddr(varName string) (uint64, error) {
 					}
 					// parse left 8 bytes as virtual memory address
 					addr = uint64(binary.LittleEndian.Uint64(instructions[1:]))
+					b.addrCache[varName] = addr
 					return addr, nil
 				}
 			}
