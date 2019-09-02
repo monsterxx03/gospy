@@ -94,6 +94,46 @@ func (b *Binary) GetVarAddr(varName string) (uint64, error) {
 	return 0, fmt.Errorf("didn't find address for %s", varName)
 }
 
+func (b *Binary) GetStruct(name string) error {
+	data, err := b.bin.DWARF()
+	if err != nil {
+		return err
+	}
+	reader := data.Reader()
+	// var addr uint64
+	for {
+		entry, err := reader.Next()
+		if err != nil {
+			return err
+		}
+		if entry == nil {
+			// reach end
+			break
+		}
+		if entry.Tag.String() != "StructType" {
+			continue
+		}
+		//	{Offset:240731
+		//	 Tag:StructType
+		//	 Children:true
+		//	 Field:[{Attr:Name Val:runtime.g Class:ClassString}
+		//			{Attr:ByteSize Val:376 Class:ClassConstant}
+		//			{Attr:Attr(10496) Val:25 Class:ClassConstant}
+		//			{Attr:Attr(10500) Val:427680 Class:ClassAddress}]}
+		// find next DW_TAG_typedef runtime.g
+		// entries between them are member fields
+		for _, f := range entry.Field {
+			switch f.Val.(type) {
+			case string:
+				if f.Val.(string) == name {
+					fmt.Printf("%+v\n", entry)
+				}
+			}
+		}
+	}
+	return nil
+}
+
 func (b *Binary) Search(addr uint64) error {
 	lndata, err := b.bin.Section(".gopclntab").Data()
 	if err != nil {

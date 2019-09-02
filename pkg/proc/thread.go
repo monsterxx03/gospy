@@ -57,6 +57,7 @@ func (t *Thread) Registers() (*syscall.PtraceRegs, error) {
 }
 
 func (t *Thread) GetGoroutines() error {
+	t.proc.bin.GetStruct("runtime.g")
 	allglenAddr, err := t.proc.bin.GetVarAddr("runtime.allglen")
 	if err != nil {
 		log.Println("Failed to get runtime.allglen from binary")
@@ -81,8 +82,10 @@ func (t *Thread) GetGoroutines() error {
 	}
 	fmt.Println("allags:", allgs)
 	// loop all groutines
-	//for i := uint64(0); i < allgs; i++ {
-	//	gAddr := allgs + i*uint64(8) // amd64 pointer size is 8
-	//}
+	for i := uint64(0); i < allglen; i++ {
+		gAddr := allgs + i*uint64(8) // amd64 pointer size is 8
+		// TODO read size runtime.g
+		fmt.Println(gAddr)
+	}
 	return nil
 }
