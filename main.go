@@ -6,7 +6,6 @@ import (
 	"os"
 	"strconv"
 
-	"gospy/pkg/binary"
 	"gospy/pkg/proc"
 	"gospy/pkg/procmaps"
 )
@@ -58,28 +57,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	p := proc.New(pid)
-	ts, err := p.Threads()
+	p, err := proc.New(pid)
 	if err != nil {
 		panic(err)
 	}
-	b, err := binary.Load(pid)
-	if err != nil {
+	if err := p.UpdateThreads(); err != nil {
 		panic(err)
 	}
-	for _, t := range ts {
-		if err := t.Lock(); err != nil {
-			panic(err)
-		}
-		defer t.Unlock()
-		regs, err := t.Registers()
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println(t.ID, regs.Rip)
-		if err := b.Search(regs.Rip); err != nil {
-			panic(err)
-		}
-		break
-	}
+	p.GetCurrentThread().GetGoroutines()
 }
