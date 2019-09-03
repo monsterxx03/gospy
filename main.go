@@ -64,5 +64,7 @@ func main() {
 	if err := p.UpdateThreads(); err != nil {
 		panic(err)
 	}
-	p.GetCurrentThread().GetGoroutines()
+	if err := p.GetCurrentThread().GetGoroutines(); err != nil {
+		panic(err)
+	}
 }

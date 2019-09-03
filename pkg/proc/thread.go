@@ -13,7 +13,7 @@ type Thread struct {
 	proc *Process
 }
 
-// ReadVM will use read this thread's virtual memory at addr
+// ReadVM will read virtual memory at addr
 func (t *Thread) ReadVMA(addr uint64) (uint64, error) {
 	// ptrace's result is a long
 	data := make([]byte, 8)
@@ -57,7 +57,9 @@ func (t *Thread) Registers() (*syscall.PtraceRegs, error) {
 }
 
 func (t *Thread) GetGoroutines() error {
-	t.proc.bin.GetStruct("runtime.g")
+	if err := t.proc.bin.GetStruct("runtime.g"); err != nil {
+		return err
+	}
 	allglenAddr, err := t.proc.bin.GetVarAddr("runtime.allglen")
 	if err != nil {
 		log.Println("Failed to get runtime.allglen from binary")

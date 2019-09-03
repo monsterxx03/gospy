@@ -126,10 +126,30 @@ func (b *Binary) GetStruct(name string) error {
 			switch f.Val.(type) {
 			case string:
 				if f.Val.(string) == name {
-					fmt.Printf("%+v\n", entry)
+					if err := parseStructMembers(name, reader); err != nil {
+						return err
+					}
 				}
 			}
 		}
+	}
+	return nil
+}
+
+func parseStructMembers(structName string, reader *dwarf.Reader) error {
+	for {
+		entry, err := reader.Next()
+		if err != nil {
+			return err
+		}
+		if entry == nil {
+			break
+		}
+		if entry.Tag.String() != "Member" {
+			return fmt.Errorf("Find non memeber field in struct reader: %+v", entry)
+		}
+		fmt.Printf("%+v\n", entry)
+		break
 	}
 	return nil
 }
