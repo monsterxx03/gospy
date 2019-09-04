@@ -20,6 +20,20 @@ type Binary struct {
 	addrCache map[string]uint64
 }
 
+// strt is struct parsed from dwarf info
+type Strt struct {
+	Name    string
+	Size    int64
+	Members map[string]*StrtMember
+}
+
+type StrtMember struct {
+	Name       string
+	Size       int64  // member field size
+	Offset     uint32 // offset in binary
+	StrtOffset int64  // offset inside struct
+}
+
 func Load(pid int, exe string) (*Binary, error) {
 	path := fmt.Sprintf("/proc/%d/exe", pid)
 	if exe != "" {
@@ -71,7 +85,7 @@ func (b *Binary) GetVarAddr(varName string) (uint64, error) {
 		for _, f := range entry.Field {
 			switch f.Val.(type) {
 			case string:
-				if f.Val.(string) == varName {
+				if f.Attr.String() == "Name" && f.Val.(string) == varName {
 					// instructions = 1 byte DW_OP type + 8 bytes address
 					instructions, ok := entry.Val(dwarf.AttrLocation).([]byte)
 					if !ok {
@@ -94,17 +108,18 @@ func (b *Binary) GetVarAddr(varName string) (uint64, error) {
 	return 0, fmt.Errorf("didn't find address for %s", varName)
 }
 
-func (b *Binary) GetStruct(name string) error {
+func (b *Binary) GetStruct(name string) (*Strt, error) {
 	data, err := b.bin.DWARF()
 	if err != nil {
-		return err
+		return nil, err
 	}
+	result := new(Strt)
+	result.Members = make(map[string]*StrtMember)
 	reader := data.Reader()
-	// var addr uint64
 	for {
 		entry, err := reader.Next()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if entry == nil {
 			// reach end
@@ -113,6 +128,7 @@ func (b *Binary) GetStruct(name string) error {
 		if entry.Tag.String() != "StructType" {
 			continue
 		}
+		// example struct entry:
 		//	{Offset:240731
 		//	 Tag:StructType
 		//	 Children:true
@@ -122,21 +138,33 @@ func (b *Binary) GetStruct(name string) error {
 		//			{Attr:Attr(10500) Val:427680 Class:ClassAddress}]}
 		// find next DW_TAG_typedef runtime.g
 		// entries between them are member fields
+		findTarget := false
+		var size int64
 		for _, f := range entry.Field {
-			switch f.Val.(type) {
-			case string:
-				if f.Val.(string) == name {
-					if err := parseStructMembers(name, reader); err != nil {
-						return err
-					}
-				}
+			if f.Attr.String() == "Name" && f.Val.(string) == name {
+				findTarget = true
+				result.Name = name
+			} else if f.Attr.String() == "ByteSize" {
+				size = f.Val.(int64)
+			}
+		}
+		if findTarget {
+			result.Size = size
+			err := result.parseMembers(reader)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
-	return nil
+	if result.Name == "" || result.Size == 0 {
+		return nil, fmt.Errorf("failed to parse struct %s", name)
+	}
+	fmt.Printf("%+v\n", result.Members["goid"])
+	return result, nil
 }
 
-func parseStructMembers(structName string, reader *dwarf.Reader) error {
+func (s *Strt) parseMembers(reader *dwarf.Reader) error {
+	prev := new(StrtMember)
 	for {
 		entry, err := reader.Next()
 		if err != nil {
@@ -145,11 +173,33 @@ func parseStructMembers(structName string, reader *dwarf.Reader) error {
 		if entry == nil {
 			break
 		}
+		if entry.Tag == 0 {
+			// end of struct, calcualte last member's size
+			prev.Size = s.Size - int64(prev.StrtOffset)
+			break
+		}
 		if entry.Tag.String() != "Member" {
 			return fmt.Errorf("Find non memeber field in struct reader: %+v", entry)
 		}
-		fmt.Printf("%+v\n", entry)
-		break
+		// example *Member* entry
+		// {Offset:240737 Tag:Member Children:false
+		//  Field:[{Attr:Name Val:stack Class:ClassString}
+		//    	   {Attr:DataMemberLoc Val:0 Class:ClassConstant}
+		//  	   {Attr:Type Val:241544 Class:ClassReference}
+		// 		   {Attr:Attr(10499) Val:false Class: ClassFlag}]}
+		m := new(StrtMember)
+		m.Offset = uint32(entry.Offset)
+		for _, f := range entry.Field {
+			if f.Attr.String() == "Name" {
+				m.Name = f.Val.(string)
+			} else if f.Attr.String() == "DataMemberLoc" {
+				m.StrtOffset = f.Val.(int64)
+				// calculate previous field's size
+				prev.Size = m.StrtOffset - prev.StrtOffset
+			}
+		}
+		s.Members[m.Name] = m
+		prev = m
 	}
 	return nil
 }
@@ -157,7 +207,7 @@ func parseStructMembers(structName string, reader *dwarf.Reader) error {
 func (b *Binary) Search(addr uint64) error {
 	lndata, err := b.bin.Section(".gopclntab").Data()
 	if err != nil {
-		println("wrong wrong line data")
+		println("wrong line data")
 		return err
 	}
 	ln := gosym.NewLineTable(lndata, b.bin.Section(".text").Addr)

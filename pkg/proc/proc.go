@@ -32,10 +32,9 @@ func (p *Process) UpdateThreads() error {
 		}
 		t := &Thread{ID: tid, proc: p}
 		p.threads[tid] = t
-		if tid != p.ID {
-			if err := t.Lock(); err != nil {
-				return err
-			}
+		// TODO maybe neend't attach all threads?
+		if err := t.Lock(); err != nil {
+			return err
 		}
 		if p.currentThread == nil {
 			p.currentThread = t

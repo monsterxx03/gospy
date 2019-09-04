@@ -14,11 +14,11 @@ type Thread struct {
 }
 
 // ReadVM will read virtual memory at addr
-func (t *Thread) ReadVMA(addr uint64) (uint64, error) {
+func (t *Thread) ReadVMA(addr uintptr) (uint64, error) {
 	// ptrace's result is a long
 	data := make([]byte, 8)
 	var err error
-	t.proc.execPtraceFunc(func() { _, err = syscall.PtracePeekData(t.ID, uintptr(addr), data) })
+	t.proc.execPtraceFunc(func() { _, err = syscall.PtracePeekData(t.ID, addr, data) })
 	if err != nil {
 		return 0, err
 	}
@@ -57,15 +57,16 @@ func (t *Thread) Registers() (*syscall.PtraceRegs, error) {
 }
 
 func (t *Thread) GetGoroutines() error {
-	if err := t.proc.bin.GetStruct("runtime.g"); err != nil {
-		return err
+	strt, err := t.proc.bin.GetStruct("runtime.g")
+	if err != nil {
+		panic(err)
 	}
 	allglenAddr, err := t.proc.bin.GetVarAddr("runtime.allglen")
 	if err != nil {
 		log.Println("Failed to get runtime.allglen from binary")
 		return err
 	}
-	allglen, err := t.ReadVMA(allglenAddr)
+	allglen, err := t.ReadVMA(uintptr(allglenAddr))
 	if err != nil {
 		log.Println("Failed to read vma for runtime.allglen")
 		return err
@@ -77,17 +78,19 @@ func (t *Thread) GetGoroutines() error {
 		log.Println("Failed to get runtime.allgs from binary")
 		return err
 	}
-	allgs, err := t.ReadVMA(allgsAddr)
+	allgs, err := t.ReadVMA(uintptr(allgsAddr))
 	if err != nil {
 		log.Println("Failed to read vma for runtime.allgs")
 		return err
 	}
-	fmt.Println("allags:", allgs)
 	// loop all groutines
+	goid := uint64(strt.Members["goid"].StrtOffset)
+	fmt.Println("goid", goid, uintptr(goid))
 	for i := uint64(0); i < allglen; i++ {
 		gAddr := allgs + i*uint64(8) // amd64 pointer size is 8
-		// TODO read size runtime.g
-		fmt.Println(gAddr)
+		addr, _ := t.ReadVMA(uintptr(gAddr))
+		_id, _ := t.ReadVMA(uintptr(addr + goid))
+		fmt.Println("go id:", _id) // YES!
 	}
 	return nil
 }
