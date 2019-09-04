@@ -159,7 +159,6 @@ func (b *Binary) GetStruct(name string) (*Strt, error) {
 	if result.Name == "" || result.Size == 0 {
 		return nil, fmt.Errorf("failed to parse struct %s", name)
 	}
-	fmt.Printf("%+v\n", result.Members["goid"])
 	return result, nil
 }
 
@@ -205,26 +204,7 @@ func (s *Strt) parseMembers(reader *dwarf.Reader) error {
 }
 
 func (b *Binary) Search(addr uint64) error {
-	lndata, err := b.bin.Section(".gopclntab").Data()
-	if err != nil {
-		println("wrong line data")
-		return err
-	}
-	ln := gosym.NewLineTable(lndata, b.bin.Section(".text").Addr)
-	symtab, err := gosym.NewTable([]byte{}, ln)
-	if err != nil {
-		return err
-	}
-	fmt.Println("xxx", symtab.PCToFunc(addr).Sym.Name)
-	allgsAddr, err := b.GetVarAddr("runtime.allgs")
-	if err != nil {
-		return err
-	}
-	fmt.Println("allgs:", allgsAddr)
-	allgLen, err := b.GetVarAddr("runtime.allglen")
-	if err != nil {
-		return err
-	}
-	fmt.Println("allglen:", allgLen)
+	file, ln, fn := b.SymTable.PCToLine(addr)
+	fmt.Println(file, ln, fn.Name)
 	return nil
 }

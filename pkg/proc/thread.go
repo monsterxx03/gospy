@@ -26,6 +26,15 @@ func (t *Thread) ReadVMA(addr uintptr) (uint64, error) {
 	return vma, nil
 }
 
+func (t *Thread) ReadData(data []byte, addr uintptr) error {
+	var err error
+	t.proc.execPtraceFunc(func() { _, err = syscall.PtracePeekData(t.ID, addr, data) })
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (t *Thread) Lock() error {
 	var err error
 	t.proc.execPtraceFunc(func() { err = syscall.PtraceAttach(t.ID) })
@@ -84,13 +93,17 @@ func (t *Thread) GetGoroutines() error {
 		return err
 	}
 	// loop all groutines
-	goid := uint64(strt.Members["goid"].StrtOffset)
-	fmt.Println("goid", goid, uintptr(goid))
 	for i := uint64(0); i < allglen; i++ {
 		gAddr := allgs + i*uint64(8) // amd64 pointer size is 8
 		addr, _ := t.ReadVMA(uintptr(gAddr))
-		_id, _ := t.ReadVMA(uintptr(addr + goid))
-		fmt.Println("go id:", _id) // YES!
+		pc := make([]byte, 8)
+		t.ReadData(pc, uintptr(addr+uint64(strt.Members["startpc"].StrtOffset)))
+		reason := make([]byte, 8)
+		t.ReadData(reason, uintptr(addr+uint64(strt.Members["waitreason"].StrtOffset)))
+		p := binary.LittleEndian.Uint64(pc)
+		if p > 0 {
+			t.proc.bin.Search(p)
+		}
 	}
 	return nil
 }
