@@ -6,21 +6,30 @@ import (
 	"runtime"
 	"strconv"
 
-	gbinary "gospy/pkg/binary"
+	gbin "gospy/pkg/binary"
 )
+
+// PSummary holds process summary info
+type PSummary struct {
+	BinPath string
+	Tnum    int // thread number
+	Gnum    int // goroutine number
+}
 
 // Process wrap operations on target process
 type Process struct {
-	ID            int
-	bin           *gbinary.Binary
-	threads       map[int]*Thread
-	currentThread *Thread
+	ID         int
+	bin        *gbin.Binary
+	threads    map[int]*Thread
+	leadThread *Thread
 
+	// to ensure all ptrace cmd run on same thread
 	ptraceChan     chan func()
 	ptraceDoneChan chan interface{}
 }
 
-func (p *Process) UpdateThreads() error {
+// Attach will attach to all threads
+func (p *Process) Attach() error {
 	files, err := ioutil.ReadDir(fmt.Sprintf("/proc/%d/task", p.ID))
 	if err != nil {
 		return err
@@ -32,21 +41,36 @@ func (p *Process) UpdateThreads() error {
 		}
 		t := &Thread{ID: tid, proc: p}
 		p.threads[tid] = t
-		// TODO maybe neend't attach all threads?
-		if err := t.Lock(); err != nil {
+		if err := t.Attach(); err != nil {
 			return err
 		}
-		if p.currentThread == nil {
-			p.currentThread = t
+		if tid == p.ID {
+			p.leadThread = t
 		}
 	}
 	return nil
 }
 
-func (p *Process) GetCurrentThread() *Thread {
-	return p.currentThread
+func (p *Process) Detach() error {
+	for _, t := range p.threads {
+		if err := t.Detach(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
+// Summary process info
+func (p *Process) Summary() (*PSummary, error) {
+	if err := p.Attach(); err != nil {
+		return nil, err
+	}
+	defer p.Detach()
+
+	return nil, nil
+}
+
+// GetThread will return target thread on id
 func (p *Process) GetThread(id int) (t *Thread, ok bool) {
 	t, ok = p.threads[id]
 	return
@@ -71,10 +95,14 @@ func (p *Process) handlePtraceFuncs() {
 	}
 }
 
+// New a Process struct for target pid
 func New(pid int) (*Process, error) {
 	// TODO support pass in external debug binary
-	bin, err := gbinary.Load(pid, "")
+	bin, err := gbin.Load(pid, "")
 	if err != nil {
+		return nil, err
+	}
+	if err := bin.Initialize(); err != nil {
 		return nil, err
 	}
 	p := &Process{

@@ -7,6 +7,8 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+
+	"github.com/golang/glog"
 )
 
 const (
@@ -14,10 +16,13 @@ const (
 )
 
 type Binary struct {
-	bin      *elf.File
-	SymTable *gosym.Table
-	// TODO cache variable lookup result
-	addrCache map[string]uint64
+	path        string
+	bin         *elf.File
+	addrCache   map[string]uint64
+	SymTable    *gosym.Table
+	GStruct     *Strt  // parsed runtime.g struct
+	AllglenAddr uint64 // parsed vma of runtime.allglen
+	AllgsAddr   uint64 // parsed vma of runtime.allgs
 }
 
 // strt is struct parsed from dwarf info
@@ -58,7 +63,30 @@ func Load(pid int, exe string) (*Binary, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Binary{bin: b, SymTable: symtab, addrCache: make(map[string]uint64)}, err
+	return &Binary{path: path, bin: b, SymTable: symtab, addrCache: make(map[string]uint64)}, nil
+}
+
+// Initialize will pre parse some info from elf binary
+func (b *Binary) Initialize() error {
+	g, err := b.GetStruct("runtime.g")
+	if err != nil {
+		glog.Errorf("Failed to get runtime.g from %s", b.path)
+		return err
+	}
+	b.GStruct = g
+	allglenaddr, err := b.GetVarAddr("runtime.allglen")
+	if err != nil {
+		glog.Errorf("Failed to get runtime.allglen from %s", b.path)
+		return err
+	}
+	b.AllglenAddr = allglenaddr
+	allgsaddr, err := b.GetVarAddr("runtime.allgs")
+	if err != nil {
+		glog.Errorf("Failed to get runtime.allgs from %s", b.path)
+		return err
+	}
+	b.AllgsAddr = allgsaddr
+	return nil
 }
 
 // GetVarAddr will search binary's DWARF info, to find virtual memory address of a global variable
