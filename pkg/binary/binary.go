@@ -203,8 +203,8 @@ func (s *Strt) parseMembers(reader *dwarf.Reader) error {
 	return nil
 }
 
-func (b *Binary) Search(addr uint64) error {
+func (b *Binary) Search(goid, addr uint64) error {
 	file, ln, fn := b.SymTable.PCToLine(addr)
-	fmt.Println(file, ln, fn.Name)
+	fmt.Println(goid, file, ln, fn.Name)
 	return nil
 }

@@ -100,9 +100,14 @@ func (t *Thread) GetGoroutines() error {
 		t.ReadData(pc, uintptr(addr+uint64(strt.Members["startpc"].StrtOffset)))
 		reason := make([]byte, 8)
 		t.ReadData(reason, uintptr(addr+uint64(strt.Members["waitreason"].StrtOffset)))
+		status := make([]byte, 8)
+		t.ReadData(status, uintptr(addr+uint64(strt.Members["atomicstatus"].StrtOffset)))
+		goid := make([]byte, 8)
+		t.ReadData(goid, uintptr(addr+uint64(strt.Members["goid"].StrtOffset)))
+		_id := binary.LittleEndian.Uint64(goid)
 		p := binary.LittleEndian.Uint64(pc)
-		if p > 0 {
-			t.proc.bin.Search(p)
+		if p > 0 && binary.LittleEndian.Uint32(status) != 6 {
+			t.proc.bin.Search(_id, p)
 		}
 	}
 	return nil
