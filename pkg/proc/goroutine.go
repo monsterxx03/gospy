@@ -22,7 +22,7 @@ func (w gwaitReason) String() string {
 	return gwaitReasonStrings[w]
 }
 
-// G is goroutine struct parsed from process memory and binary dwarf
+// G is runtime.g struct parsed from process memory and binary dwarf
 type G struct {
 	ID         uint64      // goid
 	GoPC       uint64      // pc of go statement that created this goroutine
@@ -30,6 +30,7 @@ type G struct {
 	PC         uint64      // sched.pc
 	Status     gstatus     // atomicstatus
 	WaitReason gwaitReason // if Status ==Gwaiting
+	M          *M
 }
 
 func (g *G) Waiting() bool {
@@ -46,7 +47,15 @@ func (g *G) Dead() bool {
 func (g *G) String() string {
 	result := fmt.Sprintf("G%d status: %s ", g.ID, g.Status)
 	if g.Status == gwaiting {
-		result += fmt.Sprintf("reason: %s", g.WaitReason)
+		result += fmt.Sprintf("reason: %s ", g.WaitReason)
+	}
+	if g.M != nil {
+		result += fmt.Sprintf("thread: %d", g.M.ID)
 	}
 	return result
+}
+
+// M is runtime.m struct parsed from process memory and binary dwarf
+type M struct {
+	ID uint64
 }

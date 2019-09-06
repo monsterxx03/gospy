@@ -114,11 +114,11 @@ func (t *Thread) parseG(gaddr uint64) (*G, error) {
 	if err := t.ReadData(buf, gaddr+uint64(gstruct.Members["gopc"].StrtOffset)); err != nil {
 		return nil, err
 	}
-	goPC := binary.LittleEndian.Uint64(buf)
+	goPC := toUint64(buf)
 	if err := t.ReadData(buf, gaddr+uint64(gstruct.Members["startpc"].StrtOffset)); err != nil {
 		return nil, err
 	}
-	startPC := binary.LittleEndian.Uint64(buf)
+	startPC := toUint64(buf)
 	if err := t.ReadData(buf, gaddr+uint64(gstruct.Members["waitreason"].StrtOffset)); err != nil {
 		return nil, err
 	}
@@ -126,18 +126,41 @@ func (t *Thread) parseG(gaddr uint64) (*G, error) {
 	if err := t.ReadData(buf, gaddr+uint64(gstruct.Members["atomicstatus"].StrtOffset)); err != nil {
 		return nil, err
 	}
-	status := binary.LittleEndian.Uint32(buf)
+	status := toUint32(buf)
 	if err := t.ReadData(buf, gaddr+uint64(gstruct.Members["goid"].StrtOffset)); err != nil {
 		return nil, err
 	}
-	goid := binary.LittleEndian.Uint64(buf)
+	goid := toUint64(buf)
 
+	if err := t.ReadData(buf, gaddr+uint64(gstruct.Members["m"].StrtOffset)); err != nil {
+		return nil, err
+	}
+	maddr := toUint64(buf)
+	m, err := t.parseM(maddr)
+	if err != nil {
+		return nil, err
+	}
 	g := &G{
 		ID:         goid,
 		GoPC:       goPC,
 		StartPC:    startPC,
 		Status:     gstatus(status),
 		WaitReason: gwaitReason(waitreason),
+		M:          m,
 	}
 	return g, nil
+}
+
+func (t *Thread) parseM(maddr uint64) (*M, error) {
+	if maddr == 0 {
+		return nil, nil
+	}
+	mstruct := t.bin().MStruct
+	buf := make([]byte, 8)
+	// m.procid is thread id:
+	// https://github.com/golang/go/blob/release-branch.go1.13/src/runtime/os_linux.go#L336
+	if err := t.ReadData(buf, maddr+uint64(mstruct.Members["procid"].StrtOffset)); err != nil {
+		return nil, err
+	}
+	return &M{ID: binary.LittleEndian.Uint64(buf)}, nil
 }

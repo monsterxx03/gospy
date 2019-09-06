@@ -21,6 +21,7 @@ type Binary struct {
 	addrCache   map[string]uint64
 	SymTable    *gosym.Table
 	GStruct     *Strt  // parsed runtime.g struct
+	MStruct     *Strt  //parsed runtime.m struct
 	AllglenAddr uint64 // parsed vma of runtime.allglen
 	AllgsAddr   uint64 // parsed vma of runtime.allgs
 }
@@ -74,6 +75,12 @@ func (b *Binary) Initialize() error {
 		return err
 	}
 	b.GStruct = g
+	m, err := b.GetStruct("runtime.m")
+	if err != nil {
+		glog.Errorf("Failed to get runtime.g from %s", b.path)
+		return err
+	}
+	b.MStruct = m
 	allglenaddr, err := b.GetVarAddr("runtime.allglen")
 	if err != nil {
 		glog.Errorf("Failed to get runtime.allglen from %s", b.path)
