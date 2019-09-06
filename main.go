@@ -7,6 +7,7 @@ import (
 	"github.com/urfave/cli"
 
 	"gospy/pkg/proc"
+	"gospy/pkg/term"
 )
 
 func main() {
@@ -53,6 +54,10 @@ func main() {
 			Usage:   "top like interface of functions executing",
 			Flags:   []cli.Flag{pidFlag},
 			Action: func(c *cli.Context) error {
+				t := &term.Term{}
+				if err := t.Display(); err != nil {
+					return err
+				}
 				return nil
 			},
 		},
