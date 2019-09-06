@@ -66,6 +66,13 @@ func (p *Process) Summary() (*PSummary, error) {
 		return nil, err
 	}
 	defer p.Detach()
+	gs, err := p.leadThread.GetGoroutines()
+	if err != nil {
+		return nil, err
+	}
+	for _, g := range gs {
+		fmt.Println(g)
+	}
 
 	return nil, nil
 }

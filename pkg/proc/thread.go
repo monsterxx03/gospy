@@ -2,7 +2,7 @@ package proc
 
 import (
 	"encoding/binary"
-	"fmt"
+	"sort"
 	"syscall"
 
 	"github.com/golang/glog"
@@ -72,39 +72,49 @@ func (t *Thread) Registers() (*syscall.PtraceRegs, error) {
 	return &regs, nil
 }
 
-func (t *Thread) GetGoroutines() error {
+func (t *Thread) GetGoroutines() ([]*G, error) {
 	bin := t.bin()
 	allglen, err := t.ReadVMA(bin.AllglenAddr)
 	if err != nil {
 		glog.Errorf("Failed to read vma for runtime.allglen at %d", bin.AllglenAddr)
-		return err
+		return nil, err
 	}
 	allgs, err := t.ReadVMA(bin.AllgsAddr)
 	if err != nil {
 		glog.Errorf("Failed to read vma for runtime.allgs at %d", bin.AllgsAddr)
-		return err
+		return nil, err
 	}
 	// loop all groutines addresses
+	result := make([]*G, 0)
 	for i := uint64(0); i < allglen; i++ {
 		gAddr := allgs + i*uint64(8) // amd64 pointer size is 8
 		addr, err := t.ReadVMA(gAddr)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		g, err := t.parseG(addr)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		fmt.Println(g)
-
+		if g.Status == gdead {
+			continue
+		}
+		result = append(result, g)
 	}
-	return nil
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ID < result[j].ID
+	})
+	return result, nil
 }
 
 func (t *Thread) parseG(gaddr uint64) (*G, error) {
 	gstruct := t.bin().GStruct
 
 	buf := make([]byte, 8)
+	if err := t.ReadData(buf, gaddr+uint64(gstruct.Members["gopc"].StrtOffset)); err != nil {
+		return nil, err
+	}
+	goPC := binary.LittleEndian.Uint64(buf)
 	if err := t.ReadData(buf, gaddr+uint64(gstruct.Members["startpc"].StrtOffset)); err != nil {
 		return nil, err
 	}
@@ -124,9 +134,10 @@ func (t *Thread) parseG(gaddr uint64) (*G, error) {
 
 	g := &G{
 		ID:         goid,
+		GoPC:       goPC,
 		StartPC:    startPC,
-		WaitReason: gwaitReason(waitreason),
 		Status:     gstatus(status),
+		WaitReason: gwaitReason(waitreason),
 	}
 	return g, nil
 }
