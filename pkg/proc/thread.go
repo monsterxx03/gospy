@@ -107,6 +107,10 @@ func (t *Thread) GetGoroutines() ([]*G, error) {
 	return result, nil
 }
 
+func (t *Thread) GoVersion() (string, error) {
+	return t.parseString(t.bin().GoVerAddr)
+}
+
 func (t *Thread) parseG(gaddr uint64) (*G, error) {
 	gstruct := t.bin().GStruct
 
@@ -163,4 +167,31 @@ func (t *Thread) parseM(maddr uint64) (*M, error) {
 		return nil, err
 	}
 	return &M{ID: binary.LittleEndian.Uint64(buf)}, nil
+}
+
+func (t *Thread) parseString(addr uint64) (string, error) {
+	bin := t.bin()
+
+	// TODO use process_vm_readv can bulk read bytes.
+	// go string is dataPtr(8 bytes) + len(8 bytes), we can parse string
+	// struct from binary with t.bin().GetStruct("string"), but since its
+	// structure is fixed, we can parse directly here.
+	dataPtr, err := t.ReadVMA(bin.GoVerAddr)
+	if err != nil {
+		return "", err
+	}
+	strLen, err := t.ReadVMA(bin.GoVerAddr + 8)
+	if err != nil {
+		return "", err
+	}
+	blocks := make([]byte, 0, strLen)
+	for i := uint64(0); i < strLen; i = i + 8 {
+		buf := make([]byte, 8)
+		err := t.ReadData(buf, dataPtr+i*8)
+		if err != nil {
+			return "", err
+		}
+		blocks = append(blocks, buf...)
+	}
+	return string(blocks[:strLen]), nil
 }

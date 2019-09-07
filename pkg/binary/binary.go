@@ -16,17 +16,20 @@ const (
 )
 
 type Binary struct {
-	path        string
-	bin         *elf.File
-	addrCache   map[string]uint64
-	SymTable    *gosym.Table
+	path      string
+	bin       *elf.File
+	addrCache map[string]uint64
+	SymTable  *gosym.Table
+
+	// following fields are parsed from binary dwarf during starting
+	GoVerAddr   uint64 // parsed vma of runtime.buildVersion
 	GStruct     *Strt  // parsed runtime.g struct
 	MStruct     *Strt  //parsed runtime.m struct
 	AllglenAddr uint64 // parsed vma of runtime.allglen
 	AllgsAddr   uint64 // parsed vma of runtime.allgs
 }
 
-// strt is struct parsed from dwarf info
+// Strt is a abstruct struct parsed from dwarf info
 type Strt struct {
 	Name    string
 	Size    int64
@@ -93,6 +96,13 @@ func (b *Binary) Initialize() error {
 		return err
 	}
 	b.AllgsAddr = allgsaddr
+
+	goVerAddr, err := b.GetVarAddr("runtime.buildVersion")
+	if err != nil {
+		glog.Errorf("Failed to get runtime.buildVersion from %s", b.path)
+		return err
+	}
+	b.GoVerAddr = goVerAddr
 	return nil
 }
 
