@@ -20,7 +20,7 @@ type Thread struct {
 // ReadVM will read virtual memory at addr
 func (t *Thread) ReadVMA(addr uint64) (uint64, error) {
 	// ptrace's result is a long
-	data := make([]byte, 8)
+	data := make([]byte, POINTER_SIZE)
 	var err error
 	t.proc.execPtraceFunc(func() { _, err = syscall.PtracePeekData(t.ID, uintptr(addr), data) })
 	if err != nil {
@@ -87,8 +87,9 @@ func (t *Thread) GetGoroutines() ([]*G, error) {
 	}
 	// loop all groutines addresses
 	result := make([]*G, 0)
+	// TODO parse goroutines concurrently
 	for i := uint64(0); i < allglen; i++ {
-		gAddr := allgs + i*uint64(8) // amd64 pointer size is 8
+		gAddr := allgs + i*POINTER_SIZE
 		addr, err := t.ReadVMA(gAddr)
 		if err != nil {
 			return nil, err
@@ -134,7 +135,8 @@ func (t *Thread) GoVersion() (string, error) {
 func (t *Thread) parseG(gaddr uint64) (*G, error) {
 	gstruct := t.bin().GStruct
 
-	buf := make([]byte, 8)
+	// TODO use process_vm_readv to bulk read goroutine memory data
+	buf := make([]byte, POINTER_SIZE)
 	if err := t.ReadData(buf, gaddr+uint64(gstruct.Members["gopc"].StrtOffset)); err != nil {
 		return nil, err
 	}
@@ -180,7 +182,7 @@ func (t *Thread) parseM(maddr uint64) (*M, error) {
 		return nil, nil
 	}
 	mstruct := t.bin().MStruct
-	buf := make([]byte, 8)
+	buf := make([]byte, POINTER_SIZE)
 	// m.procid is thread id:
 	// https://github.com/golang/go/blob/release-branch.go1.13/src/runtime/os_linux.go#L336
 	if err := t.ReadData(buf, maddr+uint64(mstruct.Members["procid"].StrtOffset)); err != nil {
@@ -200,14 +202,14 @@ func (t *Thread) parseString(addr uint64) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	strLen, err := t.ReadVMA(bin.GoVerAddr + 8)
+	strLen, err := t.ReadVMA(bin.GoVerAddr + POINTER_SIZE)
 	if err != nil {
 		return "", err
 	}
 	blocks := make([]byte, 0, strLen)
-	for i := uint64(0); i < strLen; i = i + 8 {
-		buf := make([]byte, 8)
-		err := t.ReadData(buf, dataPtr+i*8)
+	for i := uint64(0); i < strLen; i = i + POINTER_SIZE {
+		buf := make([]byte, POINTER_SIZE)
+		err := t.ReadData(buf, dataPtr+i*POINTER_SIZE)
 		if err != nil {
 			return "", err
 		}

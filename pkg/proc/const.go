@@ -1,5 +1,8 @@
 package proc
 
+// amd64 pointer size
+const POINTER_SIZE = 8
+
 // from runtime/runtime2.go
 const (
 	gidle            = iota // 0
