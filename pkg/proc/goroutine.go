@@ -1,6 +1,7 @@
 package proc
 
 import (
+	"debug/gosym"
 	"fmt"
 )
 
@@ -23,10 +24,19 @@ func (w gwaitReason) String() string {
 }
 
 type Location struct {
-	PC   uint64 // program counter
-	File string // source code file name, from dwarf info
-	Line int    // soure code line, from dwarf info
-	Func string // function name
+	PC   uint64      // program counter
+	File string      // source code file name, from dwarf info
+	Line int         // soure code line, from dwarf info
+	Func *gosym.Func // function name
+}
+
+func (l Location) String() string {
+	//rn := l.Func.ReceiverName()
+	//fn := l.Func.Name
+	//if rn != "" {
+	//	fn = fmt.Sprintf("%s.%s", rn, fn)
+	//}
+	return fmt.Sprintf("%s (%s:%d)", l.Func.Name, l.File, l.Line)
 }
 
 // G is runtime.g struct parsed from process memory and binary dwarf

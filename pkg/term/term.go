@@ -1,7 +1,6 @@
 package term
 
 import (
-	"strconv"
 	"strings"
 
 	ui "github.com/gizak/termui/v3"
@@ -23,21 +22,21 @@ func (t *Term) Display(sumLines []string, gs []*proc.G) error {
 	p := widgets.NewParagraph()
 	//p.Border = false
 	p.Text = strings.Join(sumLines, "\n")
-	p.SetRect(0, 0, 100, 5)
+	p.Border = false
+	tWidth, _ := ui.TerminalDimensions()
+	p.SetRect(0, 0, tWidth, 5)
 	ui.Render(p)
 
 	table := widgets.NewTable()
+	table.Border = false
+	table.RowSeparator = false
 	table.Rows = [][]string{
-		[]string{"goroutine id", "thread id", "status", "wait reason", "func", "line"},
+		[]string{"func", "count"},
 	}
 	for _, g := range gs {
-		tid := ""
-		if g.ThreadID() != 0 {
-			tid = strconv.FormatUint(g.ThreadID(), 10)
-		}
-		table.Rows = append(table.Rows, []string{strconv.FormatUint(g.ID, 10), tid, g.Status.String(), g.WaitReason.String(), g.StartLoc.Func, strconv.Itoa(g.GoLoc.Line)})
+		table.Rows = append(table.Rows, []string{g.GoLoc.String()})
 	}
-	table.SetRect(0, 5, 150, 50)
+	table.SetRect(0, 3, tWidth, 50)
 	ui.Render(table)
 
 	uiEvents := ui.PollEvents()
@@ -46,6 +45,12 @@ func (t *Term) Display(sumLines []string, gs []*proc.G) error {
 		switch e.ID {
 		case "q", "<C-c>":
 			return nil
+		case "<Resize>":
+			payload := e.Payload.(ui.Resize)
+			p.SetRect(0, 0, payload.Width, 5)
+			table.SetRect(0, 5, payload.Width, 50)
+			ui.Clear()
+			ui.Render(p, table)
 		}
 	}
 }

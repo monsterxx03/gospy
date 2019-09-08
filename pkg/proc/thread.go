@@ -114,8 +114,7 @@ func (t *Thread) getLocation(addr uint64) *Location {
 	if fn == nil {
 		return nil
 	}
-	fullFuncName := fmt.Sprintf("%s:%s.%s\n", fn.PackageName(), fn.ReceiverName(), fn.BaseName())
-	loc := &Location{PC: addr, File: file, Line: ln, Func: fullFuncName}
+	loc := &Location{PC: addr, File: file, Line: ln, Func: fn}
 	return loc
 }
 
