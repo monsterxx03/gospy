@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/golang/glog"
 )
@@ -80,38 +81,65 @@ func Load(pid int, exe string) (*Binary, error) {
 
 // Initialize will pre parse some info from elf binary
 func (b *Binary) Initialize() error {
-	g, err := b.GetStruct("runtime.g")
-	if err != nil {
-		glog.Errorf("Failed to get runtime.g from %s", b.Path)
-		return err
+	errChan := make(chan error)
+	doneChan := make(chan int)
+	wg := new(sync.WaitGroup)
+	wg.Add(5)
+	go func(wg *sync.WaitGroup) {
+		g, err := b.GetStruct("runtime.g")
+		if err != nil {
+			glog.Errorf("Failed to get runtime.g from %s", b.Path)
+			errChan <- err
+		}
+		b.GStruct = g
+		wg.Done()
+	}(wg)
+	go func(wg *sync.WaitGroup) {
+		m, err := b.GetStruct("runtime.m")
+		if err != nil {
+			glog.Errorf("Failed to get runtime.g from %s", b.Path)
+			errChan <- err
+		}
+		b.MStruct = m
+		wg.Done()
+	}(wg)
+	go func(wg *sync.WaitGroup) {
+		allglenaddr, err := b.GetVarAddr("runtime.allglen")
+		if err != nil {
+			glog.Errorf("Failed to get runtime.allglen from %s", b.Path)
+			errChan <- err
+		}
+		b.AllglenAddr = allglenaddr
+		wg.Done()
+	}(wg)
+	go func(wg *sync.WaitGroup) {
+		allgsaddr, err := b.GetVarAddr("runtime.allgs")
+		if err != nil {
+			glog.Errorf("Failed to get runtime.allgs from %s", b.Path)
+			errChan <- err
+		}
+		b.AllgsAddr = allgsaddr
+		wg.Done()
+	}(wg)
+	go func(wg *sync.WaitGroup) {
+		goVerAddr, err := b.GetVarAddr("runtime.buildVersion")
+		if err != nil {
+			glog.Errorf("Failed to get runtime.buildVersion from %s", b.Path)
+			errChan <- err
+		}
+		b.GoVerAddr = goVerAddr
+		wg.Done()
+	}(wg)
+	go func(wg *sync.WaitGroup) {
+		wg.Wait()
+		doneChan <- 1
+	}(wg)
+	select {
+	case e := <-errChan:
+		return e
+	case <-doneChan:
+		return nil
 	}
-	b.GStruct = g
-	m, err := b.GetStruct("runtime.m")
-	if err != nil {
-		glog.Errorf("Failed to get runtime.g from %s", b.Path)
-		return err
-	}
-	b.MStruct = m
-	allglenaddr, err := b.GetVarAddr("runtime.allglen")
-	if err != nil {
-		glog.Errorf("Failed to get runtime.allglen from %s", b.Path)
-		return err
-	}
-	b.AllglenAddr = allglenaddr
-	allgsaddr, err := b.GetVarAddr("runtime.allgs")
-	if err != nil {
-		glog.Errorf("Failed to get runtime.allgs from %s", b.Path)
-		return err
-	}
-	b.AllgsAddr = allgsaddr
-
-	goVerAddr, err := b.GetVarAddr("runtime.buildVersion")
-	if err != nil {
-		glog.Errorf("Failed to get runtime.buildVersion from %s", b.Path)
-		return err
-	}
-	b.GoVerAddr = goVerAddr
-	return nil
 }
 
 // GetVarAddr will search binary's DWARF info, to find virtual memory address of a global variable
