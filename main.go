@@ -55,7 +55,20 @@ func main() {
 			Flags:   []cli.Flag{pidFlag},
 			Action: func(c *cli.Context) error {
 				t := &term.Term{}
-				if err := t.Display(); err != nil {
+
+				p, err := proc.New(pid)
+				if err != nil {
+					return err
+				}
+				sum, err := p.Summary()
+				if err != nil {
+					return err
+				}
+				gs, err := p.GetGoroutines()
+				if err != nil {
+					return err
+				}
+				if err := t.Display([]string{sum.String()}, gs); err != nil {
 					return err
 				}
 				return nil

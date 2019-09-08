@@ -22,15 +22,23 @@ func (w gwaitReason) String() string {
 	return gwaitReasonStrings[w]
 }
 
+type Location struct {
+	PC   uint64 // program counter
+	File string // source code file name, from dwarf info
+	Line int    // soure code line, from dwarf info
+	Func string // function name
+}
+
 // G is runtime.g struct parsed from process memory and binary dwarf
 type G struct {
 	ID         uint64      // goid
-	GoPC       uint64      // pc of go statement that created this goroutine
-	StartPC    uint64      // pc of goroutine function
-	PC         uint64      // sched.pc
 	Status     gstatus     // atomicstatus
 	WaitReason gwaitReason // if Status ==Gwaiting
-	M          *M
+	M          *M          // hold worker thread info
+	CurLoc     *Location   // runtime location
+	UserLoc    *Location   // location of user code, a subset of CurLoc
+	GoLoc      *Location   // location of `go` statement that spawed this goroutine
+	StartLoc   *Location   // location of goroutine start function
 }
 
 func (g *G) Waiting() bool {
@@ -53,6 +61,13 @@ func (g *G) String() string {
 		result += fmt.Sprintf("thread: %d", g.M.ID)
 	}
 	return result
+}
+
+func (g *G) ThreadID() uint64 {
+	if g.M == nil {
+		return 0
+	}
+	return g.M.ID
 }
 
 // M is runtime.m struct parsed from process memory and binary dwarf

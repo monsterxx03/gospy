@@ -11,9 +11,15 @@ import (
 
 // PSummary holds process summary info
 type PSummary struct {
-	BinPath string
-	Tnum    int // thread number
-	Gnum    int // goroutine number
+	BinPath      string
+	ThreadNum    int
+	GoroutineNum int
+	GoVersion    string
+}
+
+func (s PSummary) String() string {
+	return fmt.Sprintf("bin: %s, goVer: %s, threads: %d, goroutines: %d",
+		s.BinPath, s.GoVersion, s.ThreadNum, s.GoroutineNum)
 }
 
 // Process wrap operations on target process
@@ -71,17 +77,28 @@ func (p *Process) Summary() (*PSummary, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, g := range gs {
-		fmt.Println(g)
-	}
+	//for _, g := range gs {
+	//	fmt.Println(g)
+	//}
 
 	goVer, err := p.leadThread.GoVersion()
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(goVer)
+	// fmt.Println(goVer)
 
-	return nil, nil
+	sum := &PSummary{BinPath: p.bin.Path, ThreadNum: len(p.threads),
+		GoroutineNum: len(gs), GoVersion: goVer}
+
+	return sum, nil
+}
+
+func (p *Process) GetGoroutines() ([]*G, error) {
+	if err := p.Attach(); err != nil {
+		return nil, err
+	}
+	defer p.Detach()
+	return p.leadThread.GetGoroutines()
 }
 
 // GetThread will return target thread on id

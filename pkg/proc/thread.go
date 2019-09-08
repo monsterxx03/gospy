@@ -2,6 +2,7 @@ package proc
 
 import (
 	"encoding/binary"
+	"fmt"
 	"sort"
 	"syscall"
 
@@ -96,7 +97,7 @@ func (t *Thread) GetGoroutines() ([]*G, error) {
 		if err != nil {
 			return nil, err
 		}
-		if g.Status == gdead {
+		if g.Dead() {
 			continue
 		}
 		result = append(result, g)
@@ -107,8 +108,27 @@ func (t *Thread) GetGoroutines() ([]*G, error) {
 	return result, nil
 }
 
+func (t *Thread) getLocation(addr uint64) *Location {
+	file, ln, fn := t.bin().PCToFunc(addr)
+	if fn == nil {
+		return nil
+	}
+	fullFuncName := fmt.Sprintf("%s:%s.%s\n", fn.PackageName(), fn.ReceiverName(), fn.BaseName())
+	loc := &Location{PC: addr, File: file, Line: ln, Func: fullFuncName}
+	return loc
+}
+
 func (t *Thread) GoVersion() (string, error) {
-	return t.parseString(t.bin().GoVerAddr)
+	// it's possible to parse it from binary, not runtime.
+	// but I don't know how to do it yet...
+	str, err := t.parseString(t.bin().GoVerAddr)
+	if err != nil {
+		return "", err
+	}
+	if len(str) <= 2 || str[:2] != "go" {
+		return "", fmt.Errorf("invalid go version: %s", str)
+	}
+	return str[2:], nil
 }
 
 func (t *Thread) parseG(gaddr uint64) (*G, error) {
@@ -146,11 +166,11 @@ func (t *Thread) parseG(gaddr uint64) (*G, error) {
 	}
 	g := &G{
 		ID:         goid,
-		GoPC:       goPC,
-		StartPC:    startPC,
 		Status:     gstatus(status),
 		WaitReason: gwaitReason(waitreason),
 		M:          m,
+		GoLoc:      t.getLocation(goPC),
+		StartLoc:   t.getLocation(startPC),
 	}
 	return g, nil
 }

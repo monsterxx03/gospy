@@ -16,7 +16,7 @@ const (
 )
 
 type Binary struct {
-	path      string
+	Path      string
 	bin       *elf.File
 	addrCache map[string]uint64
 	SymTable  *gosym.Table
@@ -48,6 +48,10 @@ func Load(pid int, exe string) (*Binary, error) {
 	if exe != "" {
 		path = exe
 	}
+	path, err := os.Readlink(path)
+	if err != nil {
+		return nil, err
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -56,7 +60,11 @@ func Load(pid int, exe string) (*Binary, error) {
 	if err != nil {
 		return nil, err
 	}
-	lndata, err := b.Section(".gopclntab").Data()
+	lnSession := b.Section(".gopclntab")
+	if lnSession == nil {
+		return nil, fmt.Errorf("Can't find .gopclntab session in binary, not a debug build?")
+	}
+	lndata, err := lnSession.Data()
 	if err != nil {
 		return nil, err
 	}
@@ -67,39 +75,39 @@ func Load(pid int, exe string) (*Binary, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Binary{path: path, bin: b, SymTable: symtab, addrCache: make(map[string]uint64)}, nil
+	return &Binary{Path: path, bin: b, SymTable: symtab, addrCache: make(map[string]uint64)}, nil
 }
 
 // Initialize will pre parse some info from elf binary
 func (b *Binary) Initialize() error {
 	g, err := b.GetStruct("runtime.g")
 	if err != nil {
-		glog.Errorf("Failed to get runtime.g from %s", b.path)
+		glog.Errorf("Failed to get runtime.g from %s", b.Path)
 		return err
 	}
 	b.GStruct = g
 	m, err := b.GetStruct("runtime.m")
 	if err != nil {
-		glog.Errorf("Failed to get runtime.g from %s", b.path)
+		glog.Errorf("Failed to get runtime.g from %s", b.Path)
 		return err
 	}
 	b.MStruct = m
 	allglenaddr, err := b.GetVarAddr("runtime.allglen")
 	if err != nil {
-		glog.Errorf("Failed to get runtime.allglen from %s", b.path)
+		glog.Errorf("Failed to get runtime.allglen from %s", b.Path)
 		return err
 	}
 	b.AllglenAddr = allglenaddr
 	allgsaddr, err := b.GetVarAddr("runtime.allgs")
 	if err != nil {
-		glog.Errorf("Failed to get runtime.allgs from %s", b.path)
+		glog.Errorf("Failed to get runtime.allgs from %s", b.Path)
 		return err
 	}
 	b.AllgsAddr = allgsaddr
 
 	goVerAddr, err := b.GetVarAddr("runtime.buildVersion")
 	if err != nil {
-		glog.Errorf("Failed to get runtime.buildVersion from %s", b.path)
+		glog.Errorf("Failed to get runtime.buildVersion from %s", b.Path)
 		return err
 	}
 	b.GoVerAddr = goVerAddr
@@ -225,7 +233,7 @@ func (s *Strt) parseMembers(reader *dwarf.Reader) error {
 		if entry.Tag.String() != "Member" {
 			return fmt.Errorf("Find non memeber field in struct reader: %+v", entry)
 		}
-		// example *Member* entry
+		// example *Member* entry:
 		// {Offset:240737 Tag:Member Children:false
 		//  Field:[{Attr:Name Val:stack Class:ClassString}
 		//    	   {Attr:DataMemberLoc Val:0 Class:ClassConstant}
@@ -248,8 +256,8 @@ func (s *Strt) parseMembers(reader *dwarf.Reader) error {
 	return nil
 }
 
-func (b *Binary) Search(goid, addr uint64) error {
-	file, ln, fn := b.SymTable.PCToLine(addr)
-	fmt.Println(goid, file, ln, fn.Name)
-	return nil
+// PCToFunc convert program counter to symbolic information
+func (b *Binary) PCToFunc(addr uint64) (file string, ln int, fn *gosym.Func) {
+	file, ln, fn = b.SymTable.PCToLine(addr)
+	return
 }
