@@ -131,6 +131,15 @@ func (t *Thread) parseG(gaddr uint64) (*G, error) {
 
 	// TODO use process_vm_readv to bulk read goroutine memory data
 	buf := make([]byte, POINTER_SIZE)
+	if err := t.ReadData(buf, gaddr+uint64(gstruct.Members["atomicstatus"].StrtOffset)); err != nil {
+		return nil, err
+	}
+	status := toUint32(buf)
+	if status == gdead {
+		// early return for dead goroutines
+		return &G{Status: gstatus(status)}, nil
+	}
+
 	if err := t.ReadData(buf, gaddr+uint64(gstruct.Members["gopc"].StrtOffset)); err != nil {
 		return nil, err
 	}
@@ -143,10 +152,6 @@ func (t *Thread) parseG(gaddr uint64) (*G, error) {
 		return nil, err
 	}
 	waitreason := buf[0]
-	if err := t.ReadData(buf, gaddr+uint64(gstruct.Members["atomicstatus"].StrtOffset)); err != nil {
-		return nil, err
-	}
-	status := toUint32(buf)
 	if err := t.ReadData(buf, gaddr+uint64(gstruct.Members["goid"].StrtOffset)); err != nil {
 		return nil, err
 	}
