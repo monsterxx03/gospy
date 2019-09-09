@@ -1,7 +1,6 @@
 package proc
 
 import (
-	"encoding/binary"
 	"fmt"
 	"sort"
 	"syscall"
@@ -27,7 +26,7 @@ func (t *Thread) ReadVMA(addr uint64) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	vma := binary.LittleEndian.Uint64(data)
+	vma := toUint64(data)
 	return vma, nil
 }
 
@@ -87,7 +86,7 @@ func (t *Thread) GetGoroutines() ([]*G, error) {
 		return nil, err
 	}
 	// loop all groutines addresses
-	result := make([]*G, 0)
+	result := make([]*G, 0, allglen)
 	// TODO parse goroutines concurrently
 	for i := uint64(0); i < allglen; i++ {
 		gAddr := allgs + i*POINTER_SIZE
@@ -110,13 +109,8 @@ func (t *Thread) GetGoroutines() ([]*G, error) {
 	return result, nil
 }
 
-func (t *Thread) getLocation(addr uint64) *Location {
-	file, ln, fn := t.bin().PCToFunc(addr)
-	if fn == nil {
-		return nil
-	}
-	loc := &Location{PC: addr, File: file, Line: ln, Func: fn}
-	return loc
+func (t *Thread) getLocation(addr uint64) *gbin.Location {
+	return t.bin().PCToFunc(addr)
 }
 
 func (t *Thread) GoVersion() (string, error) {
@@ -158,6 +152,7 @@ func (t *Thread) parseG(gaddr uint64) (*G, error) {
 	}
 	goid := toUint64(buf)
 
+	// parse M should be optional
 	if err := t.ReadData(buf, gaddr+uint64(gstruct.Members["m"].StrtOffset)); err != nil {
 		return nil, err
 	}
@@ -188,7 +183,7 @@ func (t *Thread) parseM(maddr uint64) (*M, error) {
 	if err := t.ReadData(buf, maddr+uint64(mstruct.Members["procid"].StrtOffset)); err != nil {
 		return nil, err
 	}
-	return &M{ID: binary.LittleEndian.Uint64(buf)}, nil
+	return &M{ID: toUint64(buf)}, nil
 }
 
 func (t *Thread) parseString(addr uint64) (string, error) {

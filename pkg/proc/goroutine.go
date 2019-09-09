@@ -1,8 +1,8 @@
 package proc
 
 import (
-	"debug/gosym"
 	"fmt"
+	gbin "gospy/pkg/binary"
 )
 
 type gstatus uint32
@@ -23,32 +23,16 @@ func (w gwaitReason) String() string {
 	return gwaitReasonStrings[w]
 }
 
-type Location struct {
-	PC   uint64      // program counter
-	File string      // source code file name, from dwarf info
-	Line int         // soure code line, from dwarf info
-	Func *gosym.Func // function name
-}
-
-func (l Location) String() string {
-	//rn := l.Func.ReceiverName()
-	//fn := l.Func.Name
-	//if rn != "" {
-	//	fn = fmt.Sprintf("%s.%s", rn, fn)
-	//}
-	return fmt.Sprintf("%s (%s:%d)", l.Func.BaseName(), l.File, l.Line)
-}
-
 // G is runtime.g struct parsed from process memory and binary dwarf
 type G struct {
-	ID         uint64      // goid
-	Status     gstatus     // atomicstatus
-	WaitReason gwaitReason // if Status ==Gwaiting
-	M          *M          // hold worker thread info
-	CurLoc     *Location   // runtime location
-	UserLoc    *Location   // location of user code, a subset of CurLoc
-	GoLoc      *Location   // location of `go` statement that spawed this goroutine
-	StartLoc   *Location   // location of goroutine start function
+	ID         uint64         // goid
+	Status     gstatus        // atomicstatus
+	WaitReason gwaitReason    // if Status ==Gwaiting
+	M          *M             // hold worker thread info
+	CurLoc     *gbin.Location // runtime location
+	UserLoc    *gbin.Location // location of user code, a subset of CurLoc
+	GoLoc      *gbin.Location // location of `go` statement that spawed this goroutine
+	StartLoc   *gbin.Location // location of goroutine start function
 }
 
 func (g *G) Waiting() bool {

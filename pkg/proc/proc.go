@@ -94,10 +94,7 @@ func (p *Process) Summary() (*PSummary, error) {
 }
 
 func (p *Process) GetGoroutines() ([]*G, error) {
-	if err := p.Attach(); err != nil {
-		return nil, err
-	}
-	defer p.Detach()
+	// TODO update thread list
 	return p.leadThread.GetGoroutines()
 }
 

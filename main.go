@@ -66,6 +66,7 @@ func main() {
 				if err != nil {
 					return err
 				}
+
 				t := term.NewTerm(p, rate)
 				if err := t.Display(); err != nil {
 					return err

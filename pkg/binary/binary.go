@@ -16,10 +16,26 @@ const (
 	DW_OP_addr = 0x03
 )
 
+type Location struct {
+	PC   uint64      // program counter
+	File string      // source code file name, from dwarf info
+	Line int         // soure code line, from dwarf info
+	Func *gosym.Func // function name
+}
+
+func (l Location) String() string {
+	//rn := l.Func.ReceiverName()
+	//fn := l.Func.Name
+	//if rn != "" {
+	//	fn = fmt.Sprintf("%s.%s", rn, fn)
+	//}
+	return fmt.Sprintf("%s (%s:%d)", l.Func.BaseName(), l.File, l.Line)
+}
+
 type Binary struct {
 	Path      string
 	bin       *elf.File
-	addrCache map[string]uint64
+	funcCache map[uint64]*Location
 	SymTable  *gosym.Table
 
 	// following fields are parsed from binary dwarf during starting
@@ -76,7 +92,7 @@ func Load(pid int, exe string) (*Binary, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Binary{Path: path, bin: b, SymTable: symtab, addrCache: make(map[string]uint64)}, nil
+	return &Binary{Path: path, bin: b, funcCache: make(map[uint64]*Location), SymTable: symtab}, nil
 }
 
 // Initialize will pre parse some info from elf binary
@@ -144,10 +160,6 @@ func (b *Binary) Initialize() error {
 
 // GetVarAddr will search binary's DWARF info, to find virtual memory address of a global variable
 func (b *Binary) GetVarAddr(varName string) (uint64, error) {
-	val, ok := b.addrCache[varName]
-	if ok {
-		return val, nil
-	}
 	data, err := b.bin.DWARF()
 	if err != nil {
 		return 0, err
@@ -180,7 +192,6 @@ func (b *Binary) GetVarAddr(varName string) (uint64, error) {
 					}
 					// parse left 8 bytes as virtual memory address
 					addr = uint64(binary.LittleEndian.Uint64(instructions[1:]))
-					b.addrCache[varName] = addr
 					return addr, nil
 				}
 			}
@@ -285,7 +296,17 @@ func (s *Strt) parseMembers(reader *dwarf.Reader) error {
 }
 
 // PCToFunc convert program counter to symbolic information
-func (b *Binary) PCToFunc(addr uint64) (file string, ln int, fn *gosym.Func) {
-	file, ln, fn = b.SymTable.PCToLine(addr)
-	return
+func (b *Binary) PCToFunc(addr uint64) *Location {
+	loc, ok := b.funcCache[addr]
+	if ok {
+		return loc
+	}
+
+	file, ln, fn := b.SymTable.PCToLine(addr)
+	if fn == nil {
+		return nil
+	}
+	loc = &Location{PC: addr, File: file, Line: ln, Func: fn}
+	b.funcCache[addr] = loc
+	return loc
 }

@@ -49,21 +49,32 @@ func NewTerm(p *proc.Process, rate int) *Term {
 	return &Term{summary: sum, top: table, proc: p, sampleRate: rate, stats: new(sampleStats), fnStats: make(map[string]*fnStat)}
 }
 
-func (t *Term) Collect(errCh chan error) {
+func (t *Term) Collect(doneCh chan int, errCh chan error) {
+	if err := t.proc.Attach(); err != nil {
+		errCh <- err
+		return
+	}
+	defer t.proc.Detach()
 	for {
-		gs, err := t.proc.GetGoroutines()
-		if err != nil {
-			errCh <- err
-		}
-		for k, v := range aggregateGoroutines(gs) {
-			if _, ok := t.fnStats[k]; !ok {
-				t.fnStats[k] = v
-			} else {
-				t.fnStats[k].count += v.count
+		select {
+		case <-doneCh:
+			return
+		default:
+			gs, err := t.proc.GetGoroutines()
+			if err != nil {
+				errCh <- err
+				return
 			}
+			for k, v := range aggregateGoroutines(gs) {
+				if _, ok := t.fnStats[k]; !ok {
+					t.fnStats[k] = v
+				} else {
+					t.fnStats[k].count += v.count
+				}
+			}
+			pause := time.Duration(1e9 / t.sampleRate)
+			time.Sleep(pause * time.Nanosecond)
 		}
-		pause := time.Duration(1 / t.sampleRate)
-		time.Sleep(pause * time.Second)
 	}
 }
 
@@ -85,11 +96,12 @@ func (t *Term) Refresh() error {
 
 func (t *Term) Display() error {
 	errCh := make(chan error)
+	doneCh := make(chan int)
 	if err := ui.Init(); err != nil {
 		return err
 	}
 	defer ui.Close()
-	go t.Collect(errCh)
+	go t.Collect(doneCh, errCh)
 
 	tWidth, _ := ui.TerminalDimensions()
 
@@ -99,13 +111,14 @@ func (t *Term) Display() error {
 	t.top.SetRect(0, SUMMARY_HEIGHT, tWidth, TOP_HEIGHT)
 	ui.Render(t.top)
 
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 	uiEvents := ui.PollEvents()
 	for {
 		select {
 		case e := <-uiEvents:
 			switch e.ID {
 			case "q", "<C-c>":
+				doneCh <- 1
 				return nil
 			case "<Resize>":
 				payload := e.Payload.(ui.Resize)
