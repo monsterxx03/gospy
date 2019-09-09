@@ -18,6 +18,7 @@ type Thread struct {
 }
 
 // ReadVM will read virtual memory at addr
+// TODO handle PIE?
 func (t *Thread) ReadVMA(addr uint64) (uint64, error) {
 	// ptrace's result is a long
 	data := make([]byte, POINTER_SIZE)

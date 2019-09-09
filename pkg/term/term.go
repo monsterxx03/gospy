@@ -1,7 +1,9 @@
 package term
 
 import (
-	"strings"
+	"sort"
+	"strconv"
+	"time"
 
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
@@ -9,48 +11,128 @@ import (
 	"gospy/pkg/proc"
 )
 
-type Term struct {
+type sampleStats struct {
+	count uint64
+	total uint64
 }
 
-func (t *Term) Display(sumLines []string, gs []*proc.G) error {
+const (
+	SUMMARY_HEIGHT = 5
+	TOP_HEIGHT     = 50
+)
 
-	if err := ui.Init(); err != nil {
-		return err
-	}
-	defer ui.Close()
+var TOP_HEADER = []string{"COUNT", "FUNC"}
 
-	p := widgets.NewParagraph()
-	//p.Border = false
-	p.Text = strings.Join(sumLines, "\n")
-	p.Border = false
-	tWidth, _ := ui.TerminalDimensions()
-	p.SetRect(0, 0, tWidth, 5)
-	ui.Render(p)
+type fnStat struct {
+	fn    string
+	count int
+}
+
+type Term struct {
+	summary    *widgets.Paragraph
+	top        *widgets.Table
+	proc       *proc.Process
+	sampleRate int
+
+	stats   *sampleStats
+	fnStats map[string]*fnStat
+}
+
+func NewTerm(p *proc.Process, rate int) *Term {
+	sum := widgets.NewParagraph()
+	sum.Border = false
 
 	table := widgets.NewTable()
 	table.Border = false
 	table.RowSeparator = false
-	table.Rows = [][]string{
-		[]string{"func", "count"},
-	}
-	for _, g := range gs {
-		table.Rows = append(table.Rows, []string{g.GoLoc.String()})
-	}
-	table.SetRect(0, 3, tWidth, 50)
-	ui.Render(table)
+	table.Rows = [][]string{TOP_HEADER}
+	return &Term{summary: sum, top: table, proc: p, sampleRate: rate, stats: new(sampleStats), fnStats: make(map[string]*fnStat)}
+}
 
+func (t *Term) Collect(errCh chan error) {
+	for {
+		gs, err := t.proc.GetGoroutines()
+		if err != nil {
+			errCh <- err
+		}
+		for k, v := range aggregateGoroutines(gs) {
+			if _, ok := t.fnStats[k]; !ok {
+				t.fnStats[k] = v
+			} else {
+				t.fnStats[k].count += v.count
+			}
+		}
+		pause := time.Duration(1 / t.sampleRate)
+		time.Sleep(pause * time.Second)
+	}
+}
+
+func (t *Term) Refresh() error {
+	result := make([]*fnStat, 0, len(t.fnStats))
+	for _, val := range t.fnStats {
+		result = append(result, val)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].count > result[j].count
+	})
+	t.top.Rows = [][]string{TOP_HEADER}
+	for _, row := range result {
+		t.top.Rows = append(t.top.Rows, []string{strconv.Itoa(row.count), row.fn})
+	}
+	ui.Render(t.top)
+	return nil
+}
+
+func (t *Term) Display() error {
+	errCh := make(chan error)
+	if err := ui.Init(); err != nil {
+		return err
+	}
+	defer ui.Close()
+	go t.Collect(errCh)
+
+	tWidth, _ := ui.TerminalDimensions()
+
+	t.summary.SetRect(0, 0, tWidth, SUMMARY_HEIGHT)
+	ui.Render(t.summary)
+
+	t.top.SetRect(0, SUMMARY_HEIGHT, tWidth, TOP_HEIGHT)
+	ui.Render(t.top)
+
+	ticker := time.NewTicker(2 * time.Second)
 	uiEvents := ui.PollEvents()
 	for {
-		e := <-uiEvents
-		switch e.ID {
-		case "q", "<C-c>":
-			return nil
-		case "<Resize>":
-			payload := e.Payload.(ui.Resize)
-			p.SetRect(0, 0, payload.Width, 5)
-			table.SetRect(0, 5, payload.Width, 50)
-			ui.Clear()
-			ui.Render(p, table)
+		select {
+		case e := <-uiEvents:
+			switch e.ID {
+			case "q", "<C-c>":
+				return nil
+			case "<Resize>":
+				payload := e.Payload.(ui.Resize)
+				t.summary.SetRect(0, 0, payload.Width, SUMMARY_HEIGHT)
+				t.top.SetRect(0, SUMMARY_HEIGHT, payload.Width, TOP_HEIGHT)
+				ui.Clear()
+				ui.Render(t.summary, t.top)
+			}
+		case <-ticker.C:
+			if err := t.Refresh(); err != nil {
+				return err
+			}
+		case err := <-errCh:
+			return err
 		}
 	}
+}
+
+func aggregateGoroutines(gs []*proc.G) map[string]*fnStat {
+	result := make(map[string]*fnStat)
+	for _, g := range gs {
+		fn := g.StartLoc.String()
+		if _, ok := result[fn]; !ok {
+			result[fn] = &fnStat{fn: fn, count: 1}
+		} else {
+			result[fn].count++
+		}
+	}
+	return result
 }

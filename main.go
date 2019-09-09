@@ -12,11 +12,18 @@ import (
 
 func main() {
 	var pid int
+	var rate int
 	pidFlag := cli.IntFlag{
 		Name:        "pid",
 		Usage:       "target go process id to spy",
 		Required:    true,
 		Destination: &pid,
+	}
+	rateFlag := cli.IntFlag{
+		Name:        "rate",
+		Usage:       "Number of samples per second",
+		Value:       100,
+		Destination: &rate,
 	}
 	app := cli.NewApp()
 	app.Name = "gospy"
@@ -52,23 +59,15 @@ func main() {
 			Name:    "top",
 			Aliases: []string{"t"},
 			Usage:   "top like interface of functions executing",
-			Flags:   []cli.Flag{pidFlag},
+			Flags:   []cli.Flag{pidFlag, rateFlag},
 			Action: func(c *cli.Context) error {
-				t := &term.Term{}
 
 				p, err := proc.New(pid)
 				if err != nil {
 					return err
 				}
-				sum, err := p.Summary()
-				if err != nil {
-					return err
-				}
-				gs, err := p.GetGoroutines()
-				if err != nil {
-					return err
-				}
-				if err := t.Display([]string{sum.String()}, gs); err != nil {
+				t := term.NewTerm(p, rate)
+				if err := t.Display(); err != nil {
 					return err
 				}
 				return nil

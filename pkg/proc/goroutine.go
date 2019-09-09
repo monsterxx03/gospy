@@ -36,7 +36,7 @@ func (l Location) String() string {
 	//if rn != "" {
 	//	fn = fmt.Sprintf("%s.%s", rn, fn)
 	//}
-	return fmt.Sprintf("%s (%s:%d)", l.Func.Name, l.File, l.Line)
+	return fmt.Sprintf("%s (%s:%d)", l.Func.BaseName(), l.File, l.Line)
 }
 
 // G is runtime.g struct parsed from process memory and binary dwarf
