@@ -29,28 +29,31 @@ type fnStat struct {
 }
 
 type Term struct {
-	summary    *widgets.Paragraph
-	top        *widgets.Table
-	proc       *proc.Process
-	sampleRate int
+	summary     *widgets.Paragraph
+	top         *widgets.Table
+	proc        *proc.Process
+	sampleRate  int
+	nonblocking bool
 
 	stats   *sampleStats
 	fnStats map[string]*fnStat
 }
 
-func NewTerm(p *proc.Process, rate int) *Term {
+func NewTerm(p *proc.Process, rate int, nonblocking bool) *Term {
 	sum := widgets.NewParagraph()
+	sum.PaddingTop = -1
+	sum.PaddingLeft = -1
 	sum.Border = false
 
 	table := widgets.NewTable()
 	table.Border = false
 	table.RowSeparator = false
 	table.Rows = [][]string{TOP_HEADER}
-	return &Term{summary: sum, top: table, proc: p, sampleRate: rate, stats: new(sampleStats), fnStats: make(map[string]*fnStat)}
+	return &Term{summary: sum, top: table, proc: p, sampleRate: rate, nonblocking: nonblocking, stats: new(sampleStats), fnStats: make(map[string]*fnStat)}
 }
 
 func (t *Term) RefreshSummary() error {
-	sum, err := t.proc.Summary()
+	sum, err := t.proc.Summary(!t.nonblocking)
 	if err != nil {
 		return err
 	}
@@ -81,7 +84,7 @@ func (t *Term) Collect(doneCh chan int, errCh chan error) {
 		case <-doneCh:
 			return
 		default:
-			gs, err := t.proc.GetGoroutines(true)
+			gs, err := t.proc.GetGoroutines(!t.nonblocking)
 			if err != nil {
 				errCh <- err
 				return

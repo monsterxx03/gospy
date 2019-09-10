@@ -35,6 +35,18 @@ type G struct {
 	StartLoc   *gbin.Location // location of goroutine start function
 }
 
+func (g *G) Idle() bool {
+	return g.Status == gidle
+}
+
+func (g *G) Running() bool {
+	return g.Status == grunning
+}
+
+func (g *G) Syscalling() bool {
+	return g.Status == gsyscall
+}
+
 func (g *G) Waiting() bool {
 	// waiting means this goroutine is blocked in runtime.
 	return g.Status == gwaiting

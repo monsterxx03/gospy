@@ -13,6 +13,7 @@ import (
 func main() {
 	var pid int
 	var rate int
+	var nonblocking bool
 	pidFlag := cli.IntFlag{
 		Name:        "pid",
 		Usage:       "target go process id to spy",
@@ -25,6 +26,11 @@ func main() {
 		Value:       100,
 		Destination: &rate,
 	}
+	nonblockingFlag := cli.BoolFlag{
+		Name:        "non-blocking",
+		Usage:       "Don't suspend target process",
+		Destination: &nonblocking,
+	}
 	app := cli.NewApp()
 	app.Name = "gospy"
 	app.Usage = "Hmm..."
@@ -33,13 +39,13 @@ func main() {
 			Name:    "summary",
 			Aliases: []string{"s"},
 			Usage:   "Dump go process internal summary",
-			Flags:   []cli.Flag{pidFlag},
+			Flags:   []cli.Flag{pidFlag, nonblockingFlag},
 			Action: func(c *cli.Context) error {
 				p, err := proc.New(pid)
 				if err != nil {
 					return err
 				}
-				_, err = p.Summary()
+				_, err = p.Summary(!nonblocking)
 				if err != nil {
 					return err
 				}
@@ -59,7 +65,7 @@ func main() {
 			Name:    "top",
 			Aliases: []string{"t"},
 			Usage:   "top like interface of functions executing",
-			Flags:   []cli.Flag{pidFlag, rateFlag},
+			Flags:   []cli.Flag{pidFlag, rateFlag, nonblockingFlag},
 			Action: func(c *cli.Context) error {
 
 				p, err := proc.New(pid)
@@ -67,7 +73,7 @@ func main() {
 					return err
 				}
 
-				t := term.NewTerm(p, rate)
+				t := term.NewTerm(p, rate, nonblocking)
 				if err := t.Display(); err != nil {
 					return err
 				}

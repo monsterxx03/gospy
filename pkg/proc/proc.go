@@ -14,15 +14,28 @@ import (
 
 // PSummary holds process summary info
 type PSummary struct {
-	BinPath      string
-	ThreadNum    int
-	GoroutineNum int
-	GoVersion    string
+	BinPath         string
+	ThreadsTotal    int
+	ThreadsSleeping int
+	ThreadsStopped  int
+	ThreadsRunning  int
+	ThreadsZombie   int
+	GTotal          int
+	GIdle           int
+	GRunning        int
+	GSyscall        int
+	GWaiting        int
+	GoVersion       string
 }
 
 func (s PSummary) String() string {
-	return fmt.Sprintf("bin: %s, goVer: %s, threads: %d, goroutines: %d",
-		s.BinPath, s.GoVersion, s.ThreadNum, s.GoroutineNum)
+	return fmt.Sprintf("bin: %s, goVer: %s\n"+
+		"Threads: %d total, %d running, %d sleeping, %d stopped, %d zombie\n"+
+		"Goroutines: %d total, %d idle, %d running, %d syscall, %d waiting\n",
+		s.BinPath, s.GoVersion,
+		s.ThreadsTotal, s.ThreadsRunning, s.ThreadsSleeping, s.ThreadsStopped, s.ThreadsZombie,
+		s.GTotal, s.GIdle, s.GRunning, s.GSyscall, s.GWaiting,
+	)
 }
 
 // Process wrap operations on target process
@@ -33,6 +46,7 @@ type Process struct {
 	leadThread *Thread
 	memFile    *os.File
 	pLock      *sync.Mutex // ensure one ptrace one time.
+	goVersion  string
 
 	// to ensure all ptrace cmd run on same thread
 	ptraceChan     chan func()
@@ -143,6 +157,9 @@ func (p *Process) parseG(gaddr uint64) (*G, error) {
 }
 
 func (p *Process) GoVersion() (string, error) {
+	if p.goVersion != "" {
+		return p.goVersion, nil
+	}
 	// it's possible to parse it from binary, not runtime.
 	// but I don't know how to do it yet...
 	str, err := p.parseString(p.bin.GoVerAddr)
@@ -152,7 +169,8 @@ func (p *Process) GoVersion() (string, error) {
 	if len(str) <= 2 || str[:2] != "go" {
 		return "", fmt.Errorf("invalid go version: %s", str)
 	}
-	return str[2:], nil
+	p.goVersion = str[2:]
+	return p.goVersion, nil
 }
 
 func (p *Process) parseString(addr uint64) (string, error) {
@@ -169,16 +187,11 @@ func (p *Process) parseString(addr uint64) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	blocks := make([]byte, 0, strLen)
-	for i := uint64(0); i < strLen; i = i + POINTER_SIZE {
-		buf := make([]byte, POINTER_SIZE)
-		err := p.ReadData(buf, dataPtr+i*POINTER_SIZE)
-		if err != nil {
-			return "", err
-		}
-		blocks = append(blocks, buf...)
+	blocks := make([]byte, strLen)
+	if err := p.ReadData(blocks, dataPtr); err != nil {
+		return "", err
 	}
-	return string(blocks[:strLen]), nil
+	return string(blocks), nil
 }
 
 func (p *Process) getLocation(addr uint64) *gbin.Location {
@@ -211,7 +224,10 @@ func (p *Process) Attach() error {
 		if err != nil {
 			return err
 		}
-		t := &Thread{ID: tid, proc: p}
+		t, err := NewThread(tid, p)
+		if err != nil {
+			return err
+		}
 		p.threads[tid] = t
 		if err := t.Attach(); err != nil {
 			return err
@@ -234,23 +250,51 @@ func (p *Process) Detach() error {
 }
 
 // Summary process info
-func (p *Process) Summary() (*PSummary, error) {
-	if err := p.Attach(); err != nil {
-		return nil, err
+func (p *Process) Summary(lock bool) (*PSummary, error) {
+	if lock {
+		if err := p.Attach(); err != nil {
+			return nil, err
+		}
+		defer p.Detach()
 	}
-	defer p.Detach()
 
-	gs, err := p.GetGoroutines(false)
-	if err != nil {
-		return nil, err
-	}
 	goVer, err := p.GoVersion()
 	if err != nil {
 		return nil, err
 	}
 
-	sum := &PSummary{BinPath: p.bin.Path, ThreadNum: len(p.threads),
-		GoroutineNum: len(gs), GoVersion: goVer}
+	trunning, tsleeping, tstopped, tzombie := 0, 0, 0, 0
+	for _, t := range p.threads {
+		if t.Running() {
+			trunning++
+		} else if t.Sleeping() {
+			tsleeping++
+		} else if t.Stopped() {
+			tstopped++
+		} else if t.Zombie() {
+			tzombie++
+		}
+	}
+	gs, err := p.GetGoroutines(false)
+	if err != nil {
+		return nil, err
+	}
+	gidle, grunning, gsyscall, gwaiting := 0, 0, 0, 0
+	for _, g := range gs {
+		if g.Idle() {
+			gidle++
+		} else if g.Running() {
+			grunning++
+		} else if g.Syscalling() {
+			gsyscall++
+		} else if g.Waiting() {
+			gwaiting++
+		}
+	}
+	sum := &PSummary{BinPath: p.bin.Path, ThreadsTotal: len(p.threads),
+		ThreadsRunning: trunning, ThreadsSleeping: tsleeping, ThreadsStopped: tstopped, ThreadsZombie: tzombie,
+		GTotal: len(gs), GIdle: gidle, GRunning: grunning, GSyscall: gsyscall, GWaiting: gwaiting,
+		GoVersion: goVer}
 
 	return sum, nil
 }

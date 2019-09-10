@@ -92,3 +92,19 @@ var gwaitReasonStrings = [...]string{
 	waitReasonWaitForGCCycle:        "wait for GC cycle",
 	waitReasonGCWorkerIdle:          "GC worker (idle)",
 }
+
+// from: man proc
+var threadStateStrings = map[string]string{
+	"R": "Running",
+	"S": "Sleeping",
+	"D": "Disk sleep",
+	"Z": "Zombie",
+	"T": "Stopped",
+	"t": "Tracing stop",
+	"w": "Paging",
+	"x": "Dead",
+	"X": "Dead",
+	"K": "Wakekill",
+	"W": "Waking",
+	"P": "Parked",
+}

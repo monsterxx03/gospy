@@ -1,6 +1,9 @@
 package proc
 
 import (
+	"fmt"
+	"io/ioutil"
+	"strings"
 	"syscall"
 
 	gbin "gospy/pkg/binary"
@@ -8,12 +11,33 @@ import (
 
 // Thread wrap operations on a system thread
 type Thread struct {
-	ID   int
-	proc *Process
+	ID    int
+	proc  *Process
+	state string
 }
 
 func (t *Thread) bin() *gbin.Binary {
 	return t.proc.bin
+}
+
+func (t *Thread) State() string {
+	return threadStateStrings[t.state]
+}
+
+func (t *Thread) Running() bool {
+	return t.state == "R"
+}
+
+func (t *Thread) Sleeping() bool {
+	return t.state == "S"
+}
+
+func (t *Thread) Stopped() bool {
+	return t.state == "T"
+}
+
+func (t *Thread) Zombie() bool {
+	return t.state == "Z"
 }
 
 func (t *Thread) Attach() error {
@@ -44,4 +68,16 @@ func (t *Thread) Registers() (*syscall.PtraceRegs, error) {
 		return nil, err
 	}
 	return &regs, nil
+}
+
+func NewThread(tid int, proc *Process) (*Thread, error) {
+	statPath := fmt.Sprintf("/proc/%d/task/%d/stat", proc.ID, tid)
+	b, err := ioutil.ReadFile(statPath)
+	if err != nil {
+		return nil, err
+	}
+	state := strings.Split(string(b), " ")[2]
+
+	t := &Thread{ID: tid, proc: proc, state: state}
+	return t, nil
 }
