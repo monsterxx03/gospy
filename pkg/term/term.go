@@ -49,6 +49,32 @@ func NewTerm(p *proc.Process, rate int) *Term {
 	return &Term{summary: sum, top: table, proc: p, sampleRate: rate, stats: new(sampleStats), fnStats: make(map[string]*fnStat)}
 }
 
+func (t *Term) RefreshSummary() error {
+	sum, err := t.proc.Summary()
+	if err != nil {
+		return err
+	}
+	t.summary.Text = sum.String()
+	ui.Render(t.summary)
+	return nil
+}
+
+func (t *Term) RefreshTop() error {
+	result := make([]*fnStat, 0, len(t.fnStats))
+	for _, val := range t.fnStats {
+		result = append(result, val)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].count > result[j].count
+	})
+	t.top.Rows = [][]string{TOP_HEADER}
+	for _, row := range result {
+		t.top.Rows = append(t.top.Rows, []string{strconv.Itoa(row.count), row.fn})
+	}
+	ui.Render(t.top)
+	return nil
+}
+
 func (t *Term) Collect(doneCh chan int, errCh chan error) {
 	for {
 		select {
@@ -74,18 +100,12 @@ func (t *Term) Collect(doneCh chan int, errCh chan error) {
 }
 
 func (t *Term) Refresh() error {
-	result := make([]*fnStat, 0, len(t.fnStats))
-	for _, val := range t.fnStats {
-		result = append(result, val)
+	if err := t.RefreshSummary(); err != nil {
+		return err
 	}
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].count > result[j].count
-	})
-	t.top.Rows = [][]string{TOP_HEADER}
-	for _, row := range result {
-		t.top.Rows = append(t.top.Rows, []string{strconv.Itoa(row.count), row.fn})
+	if err := t.RefreshTop(); err != nil {
+		return err
 	}
-	ui.Render(t.top)
 	return nil
 }
 

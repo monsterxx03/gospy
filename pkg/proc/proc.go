@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"sync"
 
 	"github.com/golang/glog"
 	gbin "gospy/pkg/binary"
@@ -31,6 +32,7 @@ type Process struct {
 	threads    map[int]*Thread
 	leadThread *Thread
 	memFile    *os.File
+	pLock      *sync.Mutex // ensure one ptrace one time.
 
 	// to ensure all ptrace cmd run on same thread
 	ptraceChan     chan func()
@@ -158,6 +160,7 @@ func (p *Process) parseM(maddr uint64) (*M, error) {
 
 // Attach will attach to all threads
 func (p *Process) Attach() error {
+	p.pLock.Lock()
 	files, err := ioutil.ReadDir(fmt.Sprintf("/proc/%d/task", p.ID))
 	if err != nil {
 		return err
@@ -185,6 +188,7 @@ func (p *Process) Detach() error {
 			return err
 		}
 	}
+	p.pLock.Unlock()
 	return nil
 }
 
@@ -203,22 +207,12 @@ func (p *Process) Summary() (*PSummary, error) {
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Println(goVer)
 
 	sum := &PSummary{BinPath: p.bin.Path, ThreadNum: len(p.threads),
 		GoroutineNum: len(gs), GoVersion: goVer}
 
 	return sum, nil
 }
-
-// func (p *Process) GetGoroutines() ([]*G, error) {
-// 	// TODO update thread list
-// 	if err := p.Attach(); err != nil {
-// 		return nil, err
-// 	}
-// 	defer p.Detach()
-// 	return p.leadThread.GetGoroutines()
-// }
 
 // GetThread will return target thread on id
 func (p *Process) GetThread(id int) (t *Thread, ok bool) {
@@ -262,6 +256,7 @@ func New(pid int) (*Process, error) {
 	p := &Process{
 		ID:             pid,
 		bin:            bin,
+		pLock:          new(sync.Mutex),
 		memFile:        memFile,
 		threads:        make(map[int]*Thread),
 		ptraceChan:     make(chan func()),

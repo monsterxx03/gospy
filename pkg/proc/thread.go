@@ -193,7 +193,6 @@ func (t *Thread) parseM(maddr uint64) (*M, error) {
 func (t *Thread) parseString(addr uint64) (string, error) {
 	bin := t.bin()
 
-	// TODO use process_vm_readv can bulk read bytes.
 	// go string is dataPtr(8 bytes) + len(8 bytes), we can parse string
 	// struct from binary with t.bin().GetStruct("string"), but since its
 	// structure is fixed, we can parse directly here.
