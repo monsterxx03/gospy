@@ -3,9 +3,11 @@ package proc
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"runtime"
 	"strconv"
 
+	"github.com/golang/glog"
 	gbin "gospy/pkg/binary"
 )
 
@@ -28,10 +30,130 @@ type Process struct {
 	bin        *gbin.Binary
 	threads    map[int]*Thread
 	leadThread *Thread
+	memFile    *os.File
 
 	// to ensure all ptrace cmd run on same thread
 	ptraceChan     chan func()
 	ptraceDoneChan chan interface{}
+}
+
+// ReadVM will read virtual memory at addr
+// TODO handle PIE?
+func (p *Process) ReadVMA(addr uint64) (uint64, error) {
+	var err error
+	// ptrace's result is a long
+	data := make([]byte, POINTER_SIZE)
+	_, err = p.memFile.ReadAt(data, int64(addr))
+	if err != nil {
+		return 0, err
+	}
+	vma := toUint64(data)
+	return vma, nil
+}
+
+func (p *Process) ReadData(data []byte, addr uint64) error {
+	var err error
+	_, err = p.memFile.ReadAt(data, int64(addr))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *Process) GetGoroutines() ([]*G, error) {
+	if err := p.Attach(); err != nil {
+		return nil, err
+	}
+	defer p.Detach()
+	bin := p.bin
+	allglen, err := p.ReadVMA(bin.AllglenAddr)
+	if err != nil {
+		glog.Errorf("Failed to read vma for runtime.allglen at %d", bin.AllglenAddr)
+		return nil, err
+	}
+	allgs, err := p.ReadVMA(bin.AllgsAddr)
+	if err != nil {
+		glog.Errorf("Failed to read vma for runtime.allgs at %d", bin.AllgsAddr)
+		return nil, err
+	}
+	// loop all groutines addresses
+	result := make([]*G, 0, allglen)
+	// TODO parse goroutines concurrently
+	for i := uint64(0); i < allglen; i++ {
+		gAddr := allgs + i*POINTER_SIZE
+		addr, err := p.ReadVMA(gAddr)
+		if err != nil {
+			return nil, err
+		}
+		g, err := p.parseG(addr)
+		if err != nil {
+			return nil, err
+		}
+		if g.Dead() {
+			continue
+		}
+		result = append(result, g)
+	}
+	// sort.Slice(result, func(i, j int) bool {
+	// 	return result[i].ID < result[j].ID
+	// })
+	return result, nil
+}
+
+func (p *Process) parseG(gaddr uint64) (*G, error) {
+	gstruct := p.bin.GStruct
+	gmb := gstruct.Members
+	buf := make([]byte, gstruct.Size)
+	if err := p.ReadData(buf, gaddr); err != nil {
+		return nil, err
+	}
+	addr := uint64(gmb["atomicstatus"].StrtOffset)
+	status := toUint32(buf[addr : addr+8])
+	if status == gdead {
+		return &G{Status: gstatus(status)}, nil
+	}
+	addr = uint64(gmb["gopc"].StrtOffset)
+	goPC := toUint64(buf[addr : addr+8])
+	addr = uint64(gmb["startpc"].StrtOffset)
+	startPC := toUint64(buf[addr : addr+8])
+	addr = uint64(gmb["waitreason"].StrtOffset)
+	waitreason := gwaitReason(buf[addr])
+	addr = uint64(gmb["goid"].StrtOffset)
+	goid := toUint64(buf[addr : addr+8])
+
+	addr = uint64(gmb["m"].StrtOffset)
+	maddr := toUint64(buf[addr : addr+8])
+	m, err := p.parseM(maddr)
+	if err != nil {
+		return nil, err
+	}
+	g := &G{
+		ID:         goid,
+		Status:     gstatus(status),
+		WaitReason: gwaitReason(waitreason),
+		M:          m,
+		GoLoc:      p.getLocation(goPC),
+		StartLoc:   p.getLocation(startPC),
+	}
+	return g, nil
+}
+
+func (p *Process) getLocation(addr uint64) *gbin.Location {
+	return p.bin.PCToFunc(addr)
+}
+
+func (p *Process) parseM(maddr uint64) (*M, error) {
+	if maddr == 0 {
+		return nil, nil
+	}
+	mstruct := p.bin.MStruct
+	buf := make([]byte, POINTER_SIZE)
+	// m.procid is thread id:
+	// https://github.com/golang/go/blob/release-branch.go1.13/src/runtime/os_linux.go#L336
+	if err := p.ReadData(buf, maddr+uint64(mstruct.Members["procid"].StrtOffset)); err != nil {
+		return nil, err
+	}
+	return &M{ID: toUint64(buf)}, nil
 }
 
 // Attach will attach to all threads
@@ -77,10 +199,6 @@ func (p *Process) Summary() (*PSummary, error) {
 	if err != nil {
 		return nil, err
 	}
-	//for _, g := range gs {
-	//	fmt.Println(g)
-	//}
-
 	goVer, err := p.leadThread.GoVersion()
 	if err != nil {
 		return nil, err
@@ -93,10 +211,14 @@ func (p *Process) Summary() (*PSummary, error) {
 	return sum, nil
 }
 
-func (p *Process) GetGoroutines() ([]*G, error) {
-	// TODO update thread list
-	return p.leadThread.GetGoroutines()
-}
+// func (p *Process) GetGoroutines() ([]*G, error) {
+// 	// TODO update thread list
+// 	if err := p.Attach(); err != nil {
+// 		return nil, err
+// 	}
+// 	defer p.Detach()
+// 	return p.leadThread.GetGoroutines()
+// }
 
 // GetThread will return target thread on id
 func (p *Process) GetThread(id int) (t *Thread, ok bool) {
@@ -133,9 +255,14 @@ func New(pid int) (*Process, error) {
 	if err := bin.Initialize(); err != nil {
 		return nil, err
 	}
+	memFile, err := os.Open(fmt.Sprintf("/proc/%d/mem", pid))
+	if err != nil {
+		return nil, err
+	}
 	p := &Process{
 		ID:             pid,
 		bin:            bin,
+		memFile:        memFile,
 		threads:        make(map[int]*Thread),
 		ptraceChan:     make(chan func()),
 		ptraceDoneChan: make(chan interface{})}

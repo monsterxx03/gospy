@@ -6,7 +6,6 @@ import (
 	"syscall"
 
 	"github.com/golang/glog"
-
 	gbin "gospy/pkg/binary"
 )
 
@@ -19,9 +18,9 @@ type Thread struct {
 // ReadVM will read virtual memory at addr
 // TODO handle PIE?
 func (t *Thread) ReadVMA(addr uint64) (uint64, error) {
+	var err error
 	// ptrace's result is a long
 	data := make([]byte, POINTER_SIZE)
-	var err error
 	t.proc.execPtraceFunc(func() { _, err = syscall.PtracePeekData(t.ID, uintptr(addr), data) })
 	if err != nil {
 		return 0, err

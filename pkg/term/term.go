@@ -50,11 +50,6 @@ func NewTerm(p *proc.Process, rate int) *Term {
 }
 
 func (t *Term) Collect(doneCh chan int, errCh chan error) {
-	if err := t.proc.Attach(); err != nil {
-		errCh <- err
-		return
-	}
-	defer t.proc.Detach()
 	for {
 		select {
 		case <-doneCh:
