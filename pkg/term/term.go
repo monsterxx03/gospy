@@ -81,7 +81,7 @@ func (t *Term) Collect(doneCh chan int, errCh chan error) {
 		case <-doneCh:
 			return
 		default:
-			gs, err := t.proc.GetGoroutines()
+			gs, err := t.proc.GetGoroutines(true)
 			if err != nil {
 				errCh <- err
 				return
@@ -121,10 +121,8 @@ func (t *Term) Display() error {
 	tWidth, _ := ui.TerminalDimensions()
 
 	t.summary.SetRect(0, 0, tWidth, SUMMARY_HEIGHT)
-	ui.Render(t.summary)
-
 	t.top.SetRect(0, SUMMARY_HEIGHT, tWidth, TOP_HEIGHT)
-	ui.Render(t.top)
+	t.Refresh()
 
 	ticker := time.NewTicker(1 * time.Second)
 	uiEvents := ui.PollEvents()

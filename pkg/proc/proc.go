@@ -62,11 +62,13 @@ func (p *Process) ReadData(data []byte, addr uint64) error {
 	return nil
 }
 
-func (p *Process) GetGoroutines() ([]*G, error) {
-	if err := p.Attach(); err != nil {
-		return nil, err
+func (p *Process) GetGoroutines(lock bool) ([]*G, error) {
+	if lock {
+		if err := p.Attach(); err != nil {
+			return nil, err
+		}
+		defer p.Detach()
 	}
-	defer p.Detach()
 	bin := p.bin
 	allglen, err := p.ReadVMA(bin.AllglenAddr)
 	if err != nil {
@@ -140,6 +142,45 @@ func (p *Process) parseG(gaddr uint64) (*G, error) {
 	return g, nil
 }
 
+func (p *Process) GoVersion() (string, error) {
+	// it's possible to parse it from binary, not runtime.
+	// but I don't know how to do it yet...
+	str, err := p.parseString(p.bin.GoVerAddr)
+	if err != nil {
+		return "", err
+	}
+	if len(str) <= 2 || str[:2] != "go" {
+		return "", fmt.Errorf("invalid go version: %s", str)
+	}
+	return str[2:], nil
+}
+
+func (p *Process) parseString(addr uint64) (string, error) {
+	bin := p.bin
+
+	// go string is dataPtr(8 bytes) + len(8 bytes), we can parse string
+	// struct from binary with t.bin().GetStruct("string"), but since its
+	// structure is fixed, we can parse directly here.
+	dataPtr, err := p.ReadVMA(bin.GoVerAddr)
+	if err != nil {
+		return "", err
+	}
+	strLen, err := p.ReadVMA(bin.GoVerAddr + POINTER_SIZE)
+	if err != nil {
+		return "", err
+	}
+	blocks := make([]byte, 0, strLen)
+	for i := uint64(0); i < strLen; i = i + POINTER_SIZE {
+		buf := make([]byte, POINTER_SIZE)
+		err := p.ReadData(buf, dataPtr+i*POINTER_SIZE)
+		if err != nil {
+			return "", err
+		}
+		blocks = append(blocks, buf...)
+	}
+	return string(blocks[:strLen]), nil
+}
+
 func (p *Process) getLocation(addr uint64) *gbin.Location {
 	return p.bin.PCToFunc(addr)
 }
@@ -199,11 +240,11 @@ func (p *Process) Summary() (*PSummary, error) {
 	}
 	defer p.Detach()
 
-	gs, err := p.leadThread.GetGoroutines()
+	gs, err := p.GetGoroutines(false)
 	if err != nil {
 		return nil, err
 	}
-	goVer, err := p.leadThread.GoVersion()
+	goVer, err := p.GoVersion()
 	if err != nil {
 		return nil, err
 	}
