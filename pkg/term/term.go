@@ -17,7 +17,7 @@ type sampleStats struct {
 }
 
 const (
-	SUMMARY_HEIGHT = 5
+	SUMMARY_HEIGHT = 4
 	TOP_HEIGHT     = 50
 )
 
@@ -46,9 +46,16 @@ func NewTerm(p *proc.Process, rate int, nonblocking bool) *Term {
 	sum.Border = false
 
 	table := widgets.NewTable()
+	table.FillRow = true
+	table.PaddingLeft = -1
+	table.PaddingTop = -1
 	table.Border = false
+	table.ColumnWidths = []int{10, 200}
+	table.TextAlignment = ui.AlignLeft
+	table.ColumnSeparator = false
 	table.RowSeparator = false
 	table.Rows = [][]string{TOP_HEADER}
+	table.RowStyles[0] = ui.NewStyle(ui.ColorBlack, ui.ColorWhite)
 	return &Term{summary: sum, top: table, proc: p, sampleRate: rate, nonblocking: nonblocking, stats: new(sampleStats), fnStats: make(map[string]*fnStat)}
 }
 
@@ -127,7 +134,7 @@ func (t *Term) Display() error {
 	t.top.SetRect(0, SUMMARY_HEIGHT, tWidth, TOP_HEIGHT)
 	t.Refresh()
 
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 	uiEvents := ui.PollEvents()
 	for {
 		select {
