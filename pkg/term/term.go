@@ -11,17 +11,12 @@ import (
 	"gospy/pkg/proc"
 )
 
-type sampleStats struct {
-	count uint64
-	total uint64
-}
-
 const (
 	SUMMARY_HEIGHT = 4
 	TOP_HEIGHT     = 50
 )
 
-var TOP_HEADER = []string{"COUNT", "FUNC"}
+var TOP_HEADER = []string{"GCount", "Func"}
 
 type fnStat struct {
 	fn    string
@@ -35,8 +30,7 @@ type Term struct {
 	sampleRate  int
 	nonblocking bool
 
-	stats   *sampleStats
-	fnStats map[string]*fnStat
+	fnStats map[string]int
 }
 
 func NewTerm(p *proc.Process, rate int, nonblocking bool) *Term {
@@ -56,7 +50,7 @@ func NewTerm(p *proc.Process, rate int, nonblocking bool) *Term {
 	table.RowSeparator = false
 	table.Rows = [][]string{TOP_HEADER}
 	table.RowStyles[0] = ui.NewStyle(ui.ColorBlack, ui.ColorWhite)
-	return &Term{summary: sum, top: table, proc: p, sampleRate: rate, nonblocking: nonblocking, stats: new(sampleStats), fnStats: make(map[string]*fnStat)}
+	return &Term{summary: sum, top: table, proc: p, sampleRate: rate, nonblocking: nonblocking, fnStats: make(map[string]int)}
 }
 
 func (t *Term) RefreshSummary() error {
@@ -70,16 +64,21 @@ func (t *Term) RefreshSummary() error {
 }
 
 func (t *Term) RefreshTop() error {
-	result := make([]*fnStat, 0, len(t.fnStats))
-	for _, val := range t.fnStats {
-		result = append(result, val)
+	type kv struct {
+		k string
+		v int
+	}
+	result := make([]kv, 0, len(t.fnStats))
+	for k, v := range t.fnStats {
+		result = append(result, kv{k, v})
 	}
 	sort.Slice(result, func(i, j int) bool {
-		return result[i].count > result[j].count
+		return result[i].v > result[j].v
 	})
+
 	t.top.Rows = [][]string{TOP_HEADER}
-	for _, row := range result {
-		t.top.Rows = append(t.top.Rows, []string{strconv.Itoa(row.count), row.fn})
+	for _, item := range result {
+		t.top.Rows = append(t.top.Rows, []string{strconv.Itoa(item.v), item.k})
 	}
 	ui.Render(t.top)
 	return nil
@@ -96,13 +95,7 @@ func (t *Term) Collect(doneCh chan int, errCh chan error) {
 				errCh <- err
 				return
 			}
-			for k, v := range aggregateGoroutines(gs) {
-				if _, ok := t.fnStats[k]; !ok {
-					t.fnStats[k] = v
-				} else {
-					t.fnStats[k].count += v.count
-				}
-			}
+			t.fnStats = aggregateGoroutines(gs)
 			pause := time.Duration(1e9 / t.sampleRate)
 			time.Sleep(pause * time.Nanosecond)
 		}
@@ -160,14 +153,14 @@ func (t *Term) Display() error {
 	}
 }
 
-func aggregateGoroutines(gs []*proc.G) map[string]*fnStat {
-	result := make(map[string]*fnStat)
+func aggregateGoroutines(gs []*proc.G) map[string]int {
+	result := make(map[string]int)
 	for _, g := range gs {
 		fn := g.StartLoc.String()
 		if _, ok := result[fn]; !ok {
-			result[fn] = &fnStat{fn: fn, count: 1}
+			result[fn] = 1
 		} else {
-			result[fn].count++
+			result[fn]++
 		}
 	}
 	return result

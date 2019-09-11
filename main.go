@@ -23,7 +23,7 @@ func main() {
 	rateFlag := cli.IntFlag{
 		Name:        "rate",
 		Usage:       "Number of samples per second",
-		Value:       100,
+		Value:       10,
 		Destination: &rate,
 	}
 	nonblockingFlag := cli.BoolFlag{
