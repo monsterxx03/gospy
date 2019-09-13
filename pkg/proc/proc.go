@@ -96,7 +96,6 @@ func (p *Process) GetGoroutines(lock bool) ([]*G, error) {
 	}
 	// loop all groutines addresses
 	result := make([]*G, 0, allglen)
-	// TODO parse goroutines concurrently
 	for i := uint64(0); i < allglen; i++ {
 		gAddr := allgs + i*POINTER_SIZE
 		addr, err := p.ReadVMA(gAddr)
@@ -110,6 +109,7 @@ func (p *Process) GetGoroutines(lock bool) ([]*G, error) {
 		if g.Dead() {
 			continue
 		}
+
 		result = append(result, g)
 	}
 	// sort.Slice(result, func(i, j int) bool {
@@ -130,14 +130,21 @@ func (p *Process) parseG(gaddr uint64) (*G, error) {
 	if status == gdead {
 		return &G{Status: gstatus(status)}, nil
 	}
+
+	addr = uint64(gmb["goid"].StrtOffset)
+	goid := toUint64(buf[addr : addr+8])
+
+	gobuf := p.bin.GobufStruct
+	schedStart := gmb["sched"].StrtOffset
+	addr = uint64(schedStart + gobuf.Members["pc"].StrtOffset)
+	pc := toUint64(buf[addr : addr+8])
+
 	addr = uint64(gmb["gopc"].StrtOffset)
 	goPC := toUint64(buf[addr : addr+8])
 	addr = uint64(gmb["startpc"].StrtOffset)
 	startPC := toUint64(buf[addr : addr+8])
 	addr = uint64(gmb["waitreason"].StrtOffset)
 	waitreason := gwaitReason(buf[addr])
-	addr = uint64(gmb["goid"].StrtOffset)
-	goid := toUint64(buf[addr : addr+8])
 
 	addr = uint64(gmb["m"].StrtOffset)
 	maddr := toUint64(buf[addr : addr+8])
@@ -150,6 +157,7 @@ func (p *Process) parseG(gaddr uint64) (*G, error) {
 		Status:     gstatus(status),
 		WaitReason: gwaitReason(waitreason),
 		M:          m,
+		CurLoc:     p.getLocation(pc),
 		GoLoc:      p.getLocation(goPC),
 		StartLoc:   p.getLocation(startPC),
 	}

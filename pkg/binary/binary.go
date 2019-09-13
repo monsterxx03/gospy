@@ -41,7 +41,8 @@ type Binary struct {
 	// following fields are parsed from binary dwarf during starting
 	GoVerAddr   uint64 // parsed vma of runtime.buildVersion
 	GStruct     *Strt  // parsed runtime.g struct
-	MStruct     *Strt  //parsed runtime.m struct
+	MStruct     *Strt  // parsed runtime.m struct
+	GobufStruct *Strt  // parsed runtime.gobuf struct
 	AllglenAddr uint64 // parsed vma of runtime.allglen
 	AllgsAddr   uint64 // parsed vma of runtime.allgs
 }
@@ -100,51 +101,60 @@ func (b *Binary) Initialize() error {
 	errChan := make(chan error)
 	doneChan := make(chan int)
 	wg := new(sync.WaitGroup)
-	wg.Add(5)
+	wg.Add(6)
 	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
 		g, err := b.GetStruct("runtime.g")
 		if err != nil {
 			glog.Errorf("Failed to get runtime.g from %s", b.Path)
 			errChan <- err
 		}
 		b.GStruct = g
-		wg.Done()
 	}(wg)
 	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
 		m, err := b.GetStruct("runtime.m")
 		if err != nil {
 			glog.Errorf("Failed to get runtime.g from %s", b.Path)
 			errChan <- err
 		}
 		b.MStruct = m
-		wg.Done()
 	}(wg)
 	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
 		allglenaddr, err := b.GetVarAddr("runtime.allglen")
 		if err != nil {
 			glog.Errorf("Failed to get runtime.allglen from %s", b.Path)
 			errChan <- err
 		}
 		b.AllglenAddr = allglenaddr
-		wg.Done()
 	}(wg)
 	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
+		gobuf, err := b.GetStruct("runtime.gobuf")
+		if err != nil {
+			glog.Errorf("Failed to get runtime.gobuf from %s", b.Path)
+			errChan <- err
+		}
+		b.GobufStruct = gobuf
+	}(wg)
+	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
 		allgsaddr, err := b.GetVarAddr("runtime.allgs")
 		if err != nil {
 			glog.Errorf("Failed to get runtime.allgs from %s", b.Path)
 			errChan <- err
 		}
 		b.AllgsAddr = allgsaddr
-		wg.Done()
 	}(wg)
 	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
 		goVerAddr, err := b.GetVarAddr("runtime.buildVersion")
 		if err != nil {
 			glog.Errorf("Failed to get runtime.buildVersion from %s", b.Path)
 			errChan <- err
 		}
 		b.GoVerAddr = goVerAddr
-		wg.Done()
 	}(wg)
 	go func(wg *sync.WaitGroup) {
 		wg.Wait()

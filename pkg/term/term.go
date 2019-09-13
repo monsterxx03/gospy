@@ -156,7 +156,7 @@ func (t *Term) Display() error {
 func aggregateGoroutines(gs []*proc.G) map[string]int {
 	result := make(map[string]int)
 	for _, g := range gs {
-		fn := g.StartLoc.String()
+		fn := g.CurLoc.String()
 		if _, ok := result[fn]; !ok {
 			result[fn] = 1
 		} else {
