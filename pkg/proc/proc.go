@@ -335,6 +335,17 @@ func (p *Process) handlePtraceFuncs() {
 // New a Process struct for target pid
 func New(pid int) (*Process, error) {
 	// TODO support pass in external debug binary
+	self, err := os.Readlink("/proc/self/ns/mnt")
+	if err != nil {
+		return nil, err
+	}
+	target, err := os.Readlink(fmt.Sprintf("/proc/%d/ns/mnt", pid))
+	if err != nil {
+		return nil, err
+	}
+	if self != target {
+		return nil, fmt.Errorf("target process in another namespace, don't support now")
+	}
 	bin, err := gbin.Load(pid, "")
 	if err != nil {
 		return nil, err

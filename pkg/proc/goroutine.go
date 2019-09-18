@@ -35,6 +35,19 @@ type G struct {
 	StartLoc   *gbin.Location // location of goroutine start function
 }
 
+func (g *G) GetLocation(pcType string) *gbin.Location {
+	switch pcType {
+	case "current":
+		return g.CurLoc
+	case "caller":
+		return g.GoLoc
+	case "start":
+		return g.StartLoc
+	default:
+		return nil
+	}
+}
+
 func (g *G) Idle() bool {
 	return g.Status == gidle
 }
@@ -59,9 +72,9 @@ func (g *G) Dead() bool {
 }
 
 func (g *G) String() string {
-	result := fmt.Sprintf("G%d status: %s ", g.ID, g.Status)
+	result := fmt.Sprintf("G%d status: %s, ", g.ID, g.Status)
 	if g.Status == gwaiting {
-		result += fmt.Sprintf("reason: %s ", g.WaitReason)
+		result += fmt.Sprintf("reason: %s, ", g.WaitReason)
 	}
 	if g.M != nil {
 		result += fmt.Sprintf("thread: %d", g.M.ID)

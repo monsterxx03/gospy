@@ -24,16 +24,15 @@ type fnStat struct {
 }
 
 type Term struct {
-	summary     *widgets.Paragraph
-	top         *widgets.Table
-	proc        *proc.Process
-	sampleRate  int
-	nonblocking bool
-
-	fnStats map[string]int
+	summary         *widgets.Paragraph
+	top             *widgets.Table
+	refreshInterval time.Duration
+	proc            *proc.Process
+	nonblocking     bool
+	pcType          string
 }
 
-func NewTerm(p *proc.Process, rate int, nonblocking bool) *Term {
+func NewTerm(p *proc.Process, interval int, nonblocking bool, pcType string) *Term {
 	sum := widgets.NewParagraph()
 	sum.PaddingTop = -1
 	sum.PaddingLeft = -1
@@ -50,7 +49,7 @@ func NewTerm(p *proc.Process, rate int, nonblocking bool) *Term {
 	table.RowSeparator = false
 	table.Rows = [][]string{TOP_HEADER}
 	table.RowStyles[0] = ui.NewStyle(ui.ColorBlack, ui.ColorWhite)
-	return &Term{summary: sum, top: table, proc: p, sampleRate: rate, nonblocking: nonblocking, fnStats: make(map[string]int)}
+	return &Term{summary: sum, top: table, refreshInterval: time.Duration(interval), proc: p, nonblocking: nonblocking, pcType: pcType}
 }
 
 func (t *Term) RefreshSummary() error {
@@ -64,12 +63,17 @@ func (t *Term) RefreshSummary() error {
 }
 
 func (t *Term) RefreshTop() error {
+	gs, err := t.proc.GetGoroutines(!t.nonblocking)
+	if err != nil {
+		return err
+	}
+	fnStats := t.aggregateGoroutines(gs)
 	type kv struct {
 		k string
 		v int
 	}
-	result := make([]kv, 0, len(t.fnStats))
-	for k, v := range t.fnStats {
+	result := make([]kv, 0, len(fnStats))
+	for k, v := range fnStats {
 		result = append(result, kv{k, v})
 	}
 	sort.Slice(result, func(i, j int) bool {
@@ -84,23 +88,23 @@ func (t *Term) RefreshTop() error {
 	return nil
 }
 
-func (t *Term) Collect(doneCh chan int, errCh chan error) {
-	for {
-		select {
-		case <-doneCh:
-			return
-		default:
-			gs, err := t.proc.GetGoroutines(!t.nonblocking)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			t.fnStats = aggregateGoroutines(gs)
-			pause := time.Duration(1e9 / t.sampleRate)
-			time.Sleep(pause * time.Nanosecond)
-		}
-	}
-}
+// func (t *Term) Collect(doneCh chan int, errCh chan error) {
+// 	for {
+// 		select {
+// 		case <-doneCh:
+// 			return
+// 		default:
+// 			gs, err := t.proc.GetGoroutines(!t.nonblocking)
+// 			if err != nil {
+// 				errCh <- err
+// 				return
+// 			}
+// 			t.fnStats = aggregateGoroutines(gs)
+// 			pause := time.Duration(1e9 / t.sampleRate)
+// 			time.Sleep(pause * time.Nanosecond)
+// 		}
+// 	}
+// }
 
 func (t *Term) Refresh() error {
 	if err := t.RefreshSummary(); err != nil {
@@ -113,28 +117,27 @@ func (t *Term) Refresh() error {
 }
 
 func (t *Term) Display() error {
-	errCh := make(chan error)
-	doneCh := make(chan int)
 	if err := ui.Init(); err != nil {
 		return err
 	}
 	defer ui.Close()
-	go t.Collect(doneCh, errCh)
+	// go t.Collect(doneCh, errCh)
 
 	tWidth, _ := ui.TerminalDimensions()
 
 	t.summary.SetRect(0, 0, tWidth, SUMMARY_HEIGHT)
 	t.top.SetRect(0, SUMMARY_HEIGHT, tWidth, TOP_HEIGHT)
-	t.Refresh()
+	if err := t.Refresh(); err != nil {
+		return err
+	}
 
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(t.refreshInterval * time.Second)
 	uiEvents := ui.PollEvents()
 	for {
 		select {
 		case e := <-uiEvents:
 			switch e.ID {
 			case "q", "<C-c>":
-				doneCh <- 1
 				return nil
 			case "<Resize>":
 				payload := e.Payload.(ui.Resize)
@@ -147,16 +150,14 @@ func (t *Term) Display() error {
 			if err := t.Refresh(); err != nil {
 				return err
 			}
-		case err := <-errCh:
-			return err
 		}
 	}
 }
 
-func aggregateGoroutines(gs []*proc.G) map[string]int {
+func (t *Term) aggregateGoroutines(gs []*proc.G) map[string]int {
 	result := make(map[string]int)
 	for _, g := range gs {
-		fn := g.CurLoc.String()
+		fn := g.GetLocation(t.pcType).String()
 		if _, ok := result[fn]; !ok {
 			result[fn] = 1
 		} else {
