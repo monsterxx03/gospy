@@ -29,9 +29,10 @@ type Term struct {
 	refreshInterval time.Duration
 	proc            *proc.Process
 	nonblocking     bool
+	pcType          string
 }
 
-func NewTerm(p *proc.Process, interval int, nonblocking bool) *Term {
+func NewTerm(p *proc.Process, interval int, nonblocking bool, pcType string) *Term {
 	sum := widgets.NewParagraph()
 	sum.PaddingTop = -1
 	sum.PaddingLeft = -1
@@ -48,7 +49,7 @@ func NewTerm(p *proc.Process, interval int, nonblocking bool) *Term {
 	table.RowSeparator = false
 	table.Rows = [][]string{TOP_HEADER}
 	table.RowStyles[0] = ui.NewStyle(ui.ColorBlack, ui.ColorWhite)
-	return &Term{summary: sum, top: table, refreshInterval: time.Duration(interval), proc: p, nonblocking: nonblocking}
+	return &Term{summary: sum, top: table, refreshInterval: time.Duration(interval), proc: p, nonblocking: nonblocking, pcType: pcType}
 }
 
 func (t *Term) RefreshSummary() error {
@@ -66,7 +67,7 @@ func (t *Term) RefreshTop() error {
 	if err != nil {
 		return err
 	}
-	fnStats := aggregateGoroutines(gs)
+	fnStats := t.aggregateGoroutines(gs)
 	type kv struct {
 		k string
 		v int
@@ -153,10 +154,10 @@ func (t *Term) Display() error {
 	}
 }
 
-func aggregateGoroutines(gs []*proc.G) map[string]int {
+func (t *Term) aggregateGoroutines(gs []*proc.G) map[string]int {
 	result := make(map[string]int)
 	for _, g := range gs {
-		fn := g.StartLoc.String()
+		fn := g.GetLocation(t.pcType).String()
 		if _, ok := result[fn]; !ok {
 			result[fn] = 1
 		} else {

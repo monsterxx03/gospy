@@ -35,6 +35,19 @@ type G struct {
 	StartLoc   *gbin.Location // location of goroutine start function
 }
 
+func (g *G) GetLocation(pcType string) *gbin.Location {
+	switch pcType {
+	case "current":
+		return g.CurLoc
+	case "go":
+		return g.GoLoc
+	case "start":
+		return g.StartLoc
+	default:
+		return nil
+	}
+}
+
 func (g *G) Idle() bool {
 	return g.Status == gidle
 }

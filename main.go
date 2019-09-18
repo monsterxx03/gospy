@@ -12,10 +12,18 @@ import (
 	"gospy/pkg/term"
 )
 
+func validPC(pc string) error {
+	if pc != "current" && pc != "start" && pc != "go" {
+		return fmt.Errorf("Invalid pc type: %s", pc)
+	}
+	return nil
+}
+
 func main() {
 	var pid int
 	var refresh int
 	var nonblocking bool
+	var pcType string
 	pidFlag := cli.IntFlag{
 		Name:        "pid",
 		Usage:       "target go process id to spy",
@@ -33,6 +41,12 @@ func main() {
 		Usage:       "Don't suspend target process",
 		Destination: &nonblocking,
 	}
+	pcFlag := cli.StringFlag{
+		Name:        "pc",
+		Usage:       "The program counter type: current, go, start",
+		Value:       "go",
+		Destination: &pcType,
+	}
 	app := cli.NewApp()
 	app.Name = "gospy"
 	app.Usage = "Hmm..."
@@ -41,8 +55,11 @@ func main() {
 			Name:    "summary",
 			Aliases: []string{"s"},
 			Usage:   "Dump go process internal summary",
-			Flags:   []cli.Flag{pidFlag, nonblockingFlag},
+			Flags:   []cli.Flag{pidFlag, nonblockingFlag, pcFlag},
 			Action: func(c *cli.Context) error {
+				if err := validPC(pcType); err != nil {
+					return err
+				}
 				p, err := proc.New(pid)
 				if err != nil {
 					return err
@@ -59,13 +76,13 @@ func main() {
 				sort.Slice(gs, func(i, j int) bool {
 					return gs[i].ID < gs[j].ID
 				})
-				fmt.Println("goroutines:\n")
+				fmt.Print("goroutines:\n\n")
 				for _, g := range gs {
 					status := g.Status.String()
 					if g.Waiting() {
 						status = "waiting for " + g.WaitReason.String()
 					}
-					fmt.Printf("%d - %s: %s \n", g.ID, status, g.GoLoc.String())
+					fmt.Printf("%d - %s: %s \n", g.ID, status, g.GetLocation(pcType).String())
 				}
 				return nil
 			},
@@ -83,15 +100,17 @@ func main() {
 			Name:    "top",
 			Aliases: []string{"t"},
 			Usage:   "top like interface of functions executing",
-			Flags:   []cli.Flag{pidFlag, refreshFlag, nonblockingFlag},
+			Flags:   []cli.Flag{pidFlag, refreshFlag, nonblockingFlag, pcFlag},
 			Action: func(c *cli.Context) error {
-
+				if err := validPC(pcType); err != nil {
+					return err
+				}
 				p, err := proc.New(pid)
 				if err != nil {
 					return err
 				}
 
-				t := term.NewTerm(p, refresh, nonblocking)
+				t := term.NewTerm(p, refresh, nonblocking, pcType)
 				if err := t.Display(); err != nil {
 					return err
 				}
