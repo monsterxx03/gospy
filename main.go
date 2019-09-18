@@ -88,18 +88,9 @@ func main() {
 			},
 		},
 		{
-			Name:    "dump",
-			Aliases: []string{"d"},
-			Usage:   "Dump go process stack trace",
-			Flags:   []cli.Flag{pidFlag},
-			Action: func(c *cli.Context) error {
-				return nil
-			},
-		},
-		{
 			Name:    "top",
 			Aliases: []string{"t"},
-			Usage:   "top like interface of functions executing",
+			Usage:   "top like interface of executing functions",
 			Flags:   []cli.Flag{pidFlag, refreshFlag, nonblockingFlag, pcFlag},
 			Action: func(c *cli.Context) error {
 				if err := validPC(pcType); err != nil {
@@ -114,15 +105,6 @@ func main() {
 				if err := t.Display(); err != nil {
 					return err
 				}
-				return nil
-			},
-		},
-		{
-			Name:    "record",
-			Aliases: []string{"r"},
-			Usage:   "Record stack trace",
-			Flags:   []cli.Flag{pidFlag},
-			Action: func(c *cli.Context) error {
 				return nil
 			},
 		},
