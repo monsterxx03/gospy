@@ -12,7 +12,7 @@ import (
 
 func main() {
 	var pid int
-	var rate int
+	var refresh int
 	var nonblocking bool
 	pidFlag := cli.IntFlag{
 		Name:        "pid",
@@ -20,11 +20,11 @@ func main() {
 		Required:    true,
 		Destination: &pid,
 	}
-	rateFlag := cli.IntFlag{
-		Name:        "rate",
-		Usage:       "Number of samples per second",
-		Value:       10,
-		Destination: &rate,
+	refreshFlag := cli.IntFlag{
+		Name:        "refresh",
+		Usage:       "refresh interval in seconds",
+		Value:       2,
+		Destination: &refresh,
 	}
 	nonblockingFlag := cli.BoolFlag{
 		Name:        "non-blocking",
@@ -65,7 +65,7 @@ func main() {
 			Name:    "top",
 			Aliases: []string{"t"},
 			Usage:   "top like interface of functions executing",
-			Flags:   []cli.Flag{pidFlag, rateFlag, nonblockingFlag},
+			Flags:   []cli.Flag{pidFlag, refreshFlag, nonblockingFlag},
 			Action: func(c *cli.Context) error {
 
 				p, err := proc.New(pid)
@@ -73,7 +73,7 @@ func main() {
 					return err
 				}
 
-				t := term.NewTerm(p, rate, nonblocking)
+				t := term.NewTerm(p, refresh, nonblocking)
 				if err := t.Display(); err != nil {
 					return err
 				}
