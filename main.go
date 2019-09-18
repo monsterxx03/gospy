@@ -43,8 +43,8 @@ func main() {
 	}
 	pcFlag := cli.StringFlag{
 		Name:        "pc",
-		Usage:       "The program counter type: current, go, start",
-		Value:       "go",
+		Usage:       "The program counter type: current, caller, start",
+		Value:       "caller",
 		Destination: &pcType,
 	}
 	app := cli.NewApp()
