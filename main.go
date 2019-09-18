@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"sort"
 
 	"github.com/golang/glog"
 	"github.com/urfave/cli"
@@ -45,9 +47,25 @@ func main() {
 				if err != nil {
 					return err
 				}
-				_, err = p.Summary(!nonblocking)
+				sum, err := p.Summary(!nonblocking)
 				if err != nil {
 					return err
+				}
+				fmt.Println(sum)
+				gs, err := p.GetGoroutines(!nonblocking)
+				if err != nil {
+					return err
+				}
+				sort.Slice(gs, func(i, j int) bool {
+					return gs[i].ID < gs[j].ID
+				})
+				fmt.Println("goroutines:\n")
+				for _, g := range gs {
+					status := g.Status.String()
+					if g.Waiting() {
+						status = "waiting for " + g.WaitReason.String()
+					}
+					fmt.Printf("%d - %s: %s \n", g.ID, status, g.GoLoc.String())
 				}
 				return nil
 			},

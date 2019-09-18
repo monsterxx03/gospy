@@ -59,9 +59,9 @@ func (g *G) Dead() bool {
 }
 
 func (g *G) String() string {
-	result := fmt.Sprintf("G%d status: %s ", g.ID, g.Status)
+	result := fmt.Sprintf("G%d status: %s, ", g.ID, g.Status)
 	if g.Status == gwaiting {
-		result += fmt.Sprintf("reason: %s ", g.WaitReason)
+		result += fmt.Sprintf("reason: %s, ", g.WaitReason)
 	}
 	if g.M != nil {
 		result += fmt.Sprintf("thread: %d", g.M.ID)
