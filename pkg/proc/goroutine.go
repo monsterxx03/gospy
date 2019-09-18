@@ -39,7 +39,7 @@ func (g *G) GetLocation(pcType string) *gbin.Location {
 	switch pcType {
 	case "current":
 		return g.CurLoc
-	case "go":
+	case "caller":
 		return g.GoLoc
 	case "start":
 		return g.StartLoc

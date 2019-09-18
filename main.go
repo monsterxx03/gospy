@@ -13,7 +13,7 @@ import (
 )
 
 func validPC(pc string) error {
-	if pc != "current" && pc != "start" && pc != "go" {
+	if pc != "current" && pc != "start" && pc != "caller" {
 		return fmt.Errorf("Invalid pc type: %s", pc)
 	}
 	return nil
