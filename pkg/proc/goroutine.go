@@ -93,3 +93,6 @@ func (g *G) ThreadID() uint64 {
 type M struct {
 	ID uint64
 }
+
+type P struct {
+}

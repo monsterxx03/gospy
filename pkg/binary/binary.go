@@ -42,9 +42,13 @@ type Binary struct {
 	GoVerAddr      uint64 // parsed vma of runtime.buildVersion
 	GStruct        *Strt  // parsed runtime.g struct
 	MStruct        *Strt  // parsed runtime.m struct
+	PStruct        *Strt  // parsed runtime.p struct
 	GobufStruct    *Strt  // parsed runtime.gobuf struct
+	SchedtStruct   *Strt  // parsed runtime.schedt struct
+	SchedAddr      uint64 // parsed vma of runtime.sched
 	AllglenAddr    uint64 // parsed vma of runtime.allglen
 	AllgsAddr      uint64 // parsed vma of runtime.allgs
+	AllpAddr       uint64 // parsed vma of runtime.allp
 	GomaxprocsAddr uint64 // parsed vma of runtime.gomaxprocs
 }
 
@@ -101,8 +105,9 @@ func Load(pid int, exe string) (*Binary, error) {
 func (b *Binary) Initialize() error {
 	errChan := make(chan error)
 	doneChan := make(chan int)
+	// TODO simplify
 	wg := new(sync.WaitGroup)
-	wg.Add(7)
+	wg.Add(11)
 	go func(wg *sync.WaitGroup) {
 		defer wg.Done()
 		g, err := b.GetStruct("runtime.g")
@@ -123,12 +128,30 @@ func (b *Binary) Initialize() error {
 	}(wg)
 	go func(wg *sync.WaitGroup) {
 		defer wg.Done()
+		p, err := b.GetStruct("runtime.p")
+		if err != nil {
+			glog.Errorf("Failed to get runtime.p from %s", b.Path)
+			errChan <- err
+		}
+		b.PStruct = p
+	}(wg)
+	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
 		allglenaddr, err := b.GetVarAddr("runtime.allglen")
 		if err != nil {
 			glog.Errorf("Failed to get runtime.allglen from %s", b.Path)
 			errChan <- err
 		}
 		b.AllglenAddr = allglenaddr
+	}(wg)
+	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
+		schedaddr, err := b.GetVarAddr("runtime.sched")
+		if err != nil {
+			glog.Errorf("Failed to get runtime.sched from %s", b.Path)
+			errChan <- err
+		}
+		b.SchedAddr = schedaddr
 	}(wg)
 	go func(wg *sync.WaitGroup) {
 		defer wg.Done()
@@ -141,12 +164,30 @@ func (b *Binary) Initialize() error {
 	}(wg)
 	go func(wg *sync.WaitGroup) {
 		defer wg.Done()
+		schedt, err := b.GetStruct("runtime.schedt")
+		if err != nil {
+			glog.Errorf("Failed to get runtime.schedt from %s", b.Path)
+			errChan <- err
+		}
+		b.SchedtStruct = schedt
+	}(wg)
+	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
 		allgsaddr, err := b.GetVarAddr("runtime.allgs")
 		if err != nil {
 			glog.Errorf("Failed to get runtime.allgs from %s", b.Path)
 			errChan <- err
 		}
 		b.AllgsAddr = allgsaddr
+	}(wg)
+	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
+		allpaddr, err := b.GetVarAddr("runtime.allp")
+		if err != nil {
+			glog.Errorf("Failed to get runtime.allp from %s", b.Path)
+			errChan <- err
+		}
+		b.AllpAddr = allpaddr
 	}(wg)
 	go func(wg *sync.WaitGroup) {
 		defer wg.Done()

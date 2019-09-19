@@ -5,6 +5,23 @@ const POINTER_SIZE = 8
 
 // from runtime/runtime2.go
 const (
+	pidle = iota // 0
+	prunning
+	psyscall
+	pgcstop
+	pdead
+)
+
+var pstatusStrings = [...]string{
+	pidle:    "idle",
+	prunning: "running",
+	psyscall: "syscall",
+	pgcstop:  "gcstop",
+	pdead:    "dead",
+}
+
+// from runtime/runtime2.go
+const (
 	gidle            = iota // 0
 	grunnable               // 1
 	grunning                // 2

@@ -40,7 +40,7 @@ A top like interface, aggregate goroutines by functions: `sudo ./gospy top --pid
 ## Limitation
 
 - x86_64 linux only
-- Don't work with binaries without debug info, if you build with linker flag `-w -s`, gospy won't be able to figure out function names. 
+- Don't work with binaries without debug info, if you build with linker flag `-w -s`, gospy won't be able to figure out function/variable names. 
 - Don't work with binaries build with pie mode(go build -buildmode=pie), eg: official released dockerd binaries. For some reason, pie binary keeps debug info, but stripped
  the `.gopclntab` section, don't know how to handle it so far...
 

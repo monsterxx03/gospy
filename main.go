@@ -49,7 +49,7 @@ func main() {
 	}
 	app := cli.NewApp()
 	app.Name = "gospy"
-	app.Usage = "Hmm..."
+	app.Usage = "inspect goroutines in non-invasive fashion"
 	app.Commands = []cli.Command{
 		{
 			Name:    "summary",
@@ -69,7 +69,7 @@ func main() {
 					return err
 				}
 				fmt.Println(sum)
-				gs, err := p.GetGoroutines(!nonblocking)
+				gs, err := p.GetGs(!nonblocking)
 				if err != nil {
 					return err
 				}

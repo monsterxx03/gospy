@@ -48,6 +48,7 @@ type Process struct {
 	memFile    *os.File
 	pLock      *sync.Mutex // ensure one ptrace one time.
 	goVersion  string
+	gomaxprocs int
 
 	// to ensure all ptrace cmd run on same thread
 	ptraceChan     chan func()
@@ -77,7 +78,42 @@ func (p *Process) ReadData(data []byte, addr uint64) error {
 	return nil
 }
 
-func (p *Process) GetGoroutines(lock bool) ([]*G, error) {
+// GetPs return P's in runtime.allp
+func (p *Process) GetPs(lock bool) ([]*P, error) {
+	if lock {
+		if err := p.Attach(); err != nil {
+			return nil, nil
+		}
+		defer p.Detach()
+	}
+	bin := p.bin
+	plen, err := p.Gomaxprocs()
+	if err != nil {
+		return nil, err
+	}
+	allp, err := p.ReadVMA(bin.AllpAddr)
+	if err != nil {
+		glog.Errorf("Failed to vma for runtime.allg at %d", bin.AllpAddr)
+		return nil, err
+	}
+	result := make([]*P, 0, plen)
+	for i := 0; i < plen; i++ {
+		paddr := allp + uint64(i)*POINTER_SIZE
+		addr, err := p.ReadVMA(paddr)
+		if err != nil {
+			return nil, err
+		}
+		_p, err := p.parseP(addr)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, _p)
+	}
+	return result, nil
+}
+
+// GetGs return goroutines
+func (p *Process) GetGs(lock bool) ([]*G, error) {
 	if lock {
 		if err := p.Attach(); err != nil {
 			return nil, err
@@ -99,8 +135,8 @@ func (p *Process) GetGoroutines(lock bool) ([]*G, error) {
 	// loop all groutines addresses
 	result := make([]*G, 0, allglen)
 	for i := uint64(0); i < allglen; i++ {
-		gAddr := allgs + i*POINTER_SIZE
-		addr, err := p.ReadVMA(gAddr)
+		gaddr := allgs + i*POINTER_SIZE
+		addr, err := p.ReadVMA(gaddr)
 		if err != nil {
 			return nil, err
 		}
@@ -118,6 +154,30 @@ func (p *Process) GetGoroutines(lock bool) ([]*G, error) {
 	// 	return result[i].ID < result[j].ID
 	// })
 	return result, nil
+}
+
+func (p *Process) parseM(maddr uint64) (*M, error) {
+	if maddr == 0 {
+		return nil, nil
+	}
+	mstruct := p.bin.MStruct
+	buf := make([]byte, POINTER_SIZE)
+	// m.procid is thread id:
+	// https://github.com/golang/go/blob/release-branch.go1.13/src/runtime/os_linux.go#L336
+	if err := p.ReadData(buf, maddr+uint64(mstruct.Members["procid"].StrtOffset)); err != nil {
+		return nil, err
+	}
+	return &M{ID: toUint64(buf)}, nil
+}
+
+func (p *Process) parseP(paddr uint64) (*P, error) {
+	data := make([]byte, 4)
+	strt := p.bin.PStruct
+	if err := p.ReadData(data, paddr+uint64(strt.Members["id"].StrtOffset)); err != nil {
+		return nil, err
+	}
+	fmt.Println(toUint32(data))
+	return nil, nil
 }
 
 func (p *Process) parseG(gaddr uint64) (*G, error) {
@@ -167,12 +227,16 @@ func (p *Process) parseG(gaddr uint64) (*G, error) {
 }
 
 func (p *Process) Gomaxprocs() (int, error) {
+	if p.gomaxprocs != 0 {
+		return p.gomaxprocs, nil
+	}
 	data := make([]byte, 4)
 	err := p.ReadData(data, p.bin.GomaxprocsAddr)
 	if err != nil {
 		return 0, err
 	}
-	return int(toUint32(data)), nil
+	p.gomaxprocs = int(toUint32(data))
+	return p.gomaxprocs, nil
 }
 
 func (p *Process) GoVersion() (string, error) {
@@ -190,6 +254,18 @@ func (p *Process) GoVersion() (string, error) {
 	}
 	p.goVersion = str[2:]
 	return p.goVersion, nil
+}
+
+func (p *Process) SchedInfo() error {
+	addr := p.bin.SchedAddr
+	strt := p.bin.SchedtStruct
+	data := make([]byte, 4)
+	err := p.ReadData(data, addr+uint64(strt.Members["runqsize"].StrtOffset))
+	if err != nil {
+		return err
+	}
+	fmt.Println(toUint32(data))
+	return nil
 }
 
 func (p *Process) parseString(addr uint64) (string, error) {
@@ -215,20 +291,6 @@ func (p *Process) parseString(addr uint64) (string, error) {
 
 func (p *Process) getLocation(addr uint64) *gbin.Location {
 	return p.bin.PCToFunc(addr)
-}
-
-func (p *Process) parseM(maddr uint64) (*M, error) {
-	if maddr == 0 {
-		return nil, nil
-	}
-	mstruct := p.bin.MStruct
-	buf := make([]byte, POINTER_SIZE)
-	// m.procid is thread id:
-	// https://github.com/golang/go/blob/release-branch.go1.13/src/runtime/os_linux.go#L336
-	if err := p.ReadData(buf, maddr+uint64(mstruct.Members["procid"].StrtOffset)); err != nil {
-		return nil, err
-	}
-	return &M{ID: toUint64(buf)}, nil
 }
 
 // Attach will attach to all threads
@@ -285,7 +347,6 @@ func (p *Process) Summary(lock bool) (*PSummary, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	trunning, tsleeping, tstopped, tzombie := 0, 0, 0, 0
 	for _, t := range p.threads {
 		if t.Running() {
@@ -298,7 +359,7 @@ func (p *Process) Summary(lock bool) (*PSummary, error) {
 			tzombie++
 		}
 	}
-	gs, err := p.GetGoroutines(false)
+	gs, err := p.GetGs(false)
 	if err != nil {
 		return nil, err
 	}

@@ -63,7 +63,7 @@ func (t *Term) RefreshSummary() error {
 }
 
 func (t *Term) RefreshTop() error {
-	gs, err := t.proc.GetGoroutines(!t.nonblocking)
+	gs, err := t.proc.GetGs(!t.nonblocking)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (t *Term) RefreshTop() error {
 // 		case <-doneCh:
 // 			return
 // 		default:
-// 			gs, err := t.proc.GetGoroutines(!t.nonblocking)
+// 			gs, err := t.proc.GetGs(!t.nonblocking)
 // 			if err != nil {
 // 				errCh <- err
 // 				return
