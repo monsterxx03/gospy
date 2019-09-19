@@ -176,8 +176,12 @@ func (p *Process) parseP(paddr uint64) (*P, error) {
 	if err := p.ReadData(data, paddr+uint64(strt.Members["id"].StrtOffset)); err != nil {
 		return nil, err
 	}
-	fmt.Println(toUint32(data))
-	return nil, nil
+	id := toUint32(data)
+	if err := p.ReadData(data, paddr+uint64(strt.Members["status"].StrtOffset)); err != nil {
+		return nil, err
+	}
+	status := pstatus(toUint32(data))
+	return &P{ID: int32(id), Status: status}, nil
 }
 
 func (p *Process) parseG(gaddr uint64) (*G, error) {

@@ -5,6 +5,15 @@ import (
 	gbin "gospy/pkg/binary"
 )
 
+type pstatus uint32
+
+func (s pstatus) String() string {
+	if s < 0 || s >= pstatus(len(pstatusStrings)) {
+		return fmt.Sprintf("unknown processor status %d", s)
+	}
+	return pstatusStrings[s]
+}
+
 type gstatus uint32
 
 func (s gstatus) String() string {
@@ -89,10 +98,23 @@ func (g *G) ThreadID() uint64 {
 	return g.M.ID
 }
 
-// M is runtime.m struct parsed from process memory and binary dwarf
+// M is runtime.m struct
 type M struct {
 	ID uint64
 }
 
+// P (processor) is runtime.p struct
 type P struct {
+	ID     int32
+	Status pstatus
+	M      *M
+}
+
+// Sched is the global goroutine scheduler
+type Sched struct {
+	MidleCount     int32 // number of idle m's waiting for work
+	MspinningCount uint32
+	MfreedCount    uint32 // cumulative number of freed m's
+	PidleCount     int32
+	RunqSize       int32 // global runnable queue size
 }
