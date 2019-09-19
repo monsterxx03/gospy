@@ -26,13 +26,14 @@ type PSummary struct {
 	GSyscall        int
 	GWaiting        int
 	GoVersion       string
+	Gomaxprocs      int
 }
 
 func (s PSummary) String() string {
-	return fmt.Sprintf("bin: %s, goVer: %s\n"+
+	return fmt.Sprintf("bin: %s, goVer: %s, gomaxprocs: %d\n"+
 		"Threads: %d total, %d running, %d sleeping, %d stopped, %d zombie\n"+
 		"Goroutines: %d total, %d idle, %d running, %d syscall, %d waiting\n",
-		s.BinPath, s.GoVersion,
+		s.BinPath, s.GoVersion, s.Gomaxprocs,
 		s.ThreadsTotal, s.ThreadsRunning, s.ThreadsSleeping, s.ThreadsStopped, s.ThreadsZombie,
 		s.GTotal, s.GIdle, s.GRunning, s.GSyscall, s.GWaiting,
 	)
@@ -84,6 +85,7 @@ func (p *Process) GetGoroutines(lock bool) ([]*G, error) {
 		defer p.Detach()
 	}
 	bin := p.bin
+
 	allglen, err := p.ReadVMA(bin.AllglenAddr)
 	if err != nil {
 		glog.Errorf("Failed to read vma for runtime.allglen at %d", bin.AllglenAddr)
@@ -162,6 +164,15 @@ func (p *Process) parseG(gaddr uint64) (*G, error) {
 		StartLoc:   p.getLocation(startPC),
 	}
 	return g, nil
+}
+
+func (p *Process) Gomaxprocs() (int, error) {
+	data := make([]byte, 4)
+	err := p.ReadData(data, p.bin.GomaxprocsAddr)
+	if err != nil {
+		return 0, err
+	}
+	return int(toUint32(data)), nil
 }
 
 func (p *Process) GoVersion() (string, error) {
@@ -270,6 +281,10 @@ func (p *Process) Summary(lock bool) (*PSummary, error) {
 	if err != nil {
 		return nil, err
 	}
+	gomaxprocs, err := p.Gomaxprocs()
+	if err != nil {
+		return nil, err
+	}
 
 	trunning, tsleeping, tstopped, tzombie := 0, 0, 0, 0
 	for _, t := range p.threads {
@@ -302,7 +317,7 @@ func (p *Process) Summary(lock bool) (*PSummary, error) {
 	sum := &PSummary{BinPath: p.bin.Path, ThreadsTotal: len(p.threads),
 		ThreadsRunning: trunning, ThreadsSleeping: tsleeping, ThreadsStopped: tstopped, ThreadsZombie: tzombie,
 		GTotal: len(gs), GIdle: gidle, GRunning: grunning, GSyscall: gsyscall, GWaiting: gwaiting,
-		GoVersion: goVer}
+		GoVersion: goVer, Gomaxprocs: gomaxprocs}
 
 	return sum, nil
 }

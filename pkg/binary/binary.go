@@ -39,12 +39,13 @@ type Binary struct {
 	SymTable  *gosym.Table
 
 	// following fields are parsed from binary dwarf during starting
-	GoVerAddr   uint64 // parsed vma of runtime.buildVersion
-	GStruct     *Strt  // parsed runtime.g struct
-	MStruct     *Strt  // parsed runtime.m struct
-	GobufStruct *Strt  // parsed runtime.gobuf struct
-	AllglenAddr uint64 // parsed vma of runtime.allglen
-	AllgsAddr   uint64 // parsed vma of runtime.allgs
+	GoVerAddr      uint64 // parsed vma of runtime.buildVersion
+	GStruct        *Strt  // parsed runtime.g struct
+	MStruct        *Strt  // parsed runtime.m struct
+	GobufStruct    *Strt  // parsed runtime.gobuf struct
+	AllglenAddr    uint64 // parsed vma of runtime.allglen
+	AllgsAddr      uint64 // parsed vma of runtime.allgs
+	GomaxprocsAddr uint64 // parsed vma of runtime.gomaxprocs
 }
 
 // Strt is a abstruct struct parsed from dwarf info
@@ -101,7 +102,7 @@ func (b *Binary) Initialize() error {
 	errChan := make(chan error)
 	doneChan := make(chan int)
 	wg := new(sync.WaitGroup)
-	wg.Add(6)
+	wg.Add(7)
 	go func(wg *sync.WaitGroup) {
 		defer wg.Done()
 		g, err := b.GetStruct("runtime.g")
@@ -155,6 +156,15 @@ func (b *Binary) Initialize() error {
 			errChan <- err
 		}
 		b.GoVerAddr = goVerAddr
+	}(wg)
+	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
+		gomaxprocs, err := b.GetVarAddr("runtime.gomaxprocs")
+		if err != nil {
+			glog.Errorf("Failed to get runtime.gomaxprocs from %s", b.Path)
+			errChan <- err
+		}
+		b.GomaxprocsAddr = gomaxprocs
 	}(wg)
 	go func(wg *sync.WaitGroup) {
 		wg.Wait()

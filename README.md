@@ -1,4 +1,4 @@
-# gospy: Non instruction goroutine inspector
+# gospy: Non-Invasive goroutine inspector
 
 A tiny tool to inspect your go process's gorouting info, without single line change in your code. Inspired by [py-spy](https://github.com/benfred/py-spy),
 learned a lot from [delve](https://github.com/go-delve/delve)
@@ -41,7 +41,8 @@ A top like interface, aggregate goroutines by functions: `sudo ./gospy top --pid
 
 - x86_64 linux only
 - Don't work with binaries without debug info, if you build with linker flag `-w -s`, gospy won't be able to figure out function names. 
-- Don't work with binaries build with pie mode(go build -buildmode=pie), eg: official released dockerd binaries.
+- Don't work with binaries build with pie mode(go build -buildmode=pie), eg: official released dockerd binaries. For some reason, pie binary keeps debug info, but stripped
+ the `.gopclntab` section, don't know how to handle it so far...
 
 
 ## TODO
