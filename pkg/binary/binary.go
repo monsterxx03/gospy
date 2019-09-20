@@ -59,6 +59,10 @@ type Strt struct {
 	Members map[string]*StrtMember
 }
 
+func (s *Strt) GetFieldAddr(baseAddr uint64, name string) uint64 {
+	return baseAddr + uint64(s.Members[name].StrtOffset)
+}
+
 type StrtMember struct {
 	Name       string
 	Size       int64  // member field size

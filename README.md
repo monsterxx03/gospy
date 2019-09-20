@@ -47,4 +47,5 @@ A top like interface, aggregate goroutines by functions: `sudo ./gospy top --pid
 
 ## TODO
 
-- support inspect go process run in container namespace
+- Optimize performance
+- Support inspect go process run in container namespace

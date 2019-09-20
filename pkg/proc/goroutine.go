@@ -65,7 +65,7 @@ func (g *G) Running() bool {
 	return g.Status == grunning
 }
 
-func (g *G) Syscalling() bool {
+func (g *G) Syscall() bool {
 	return g.Status == gsyscall
 }
 
@@ -105,16 +105,38 @@ type M struct {
 
 // P (processor) is runtime.p struct
 type P struct {
-	ID     int32
-	Status pstatus
-	M      *M
+	ID          int32
+	Status      pstatus
+	Schedtick   uint32
+	Syscalltick uint32
+	M           *M
+}
+
+func (p *P) Idle() bool {
+	return p.Status == pidle
+}
+
+func (p *P) Running() bool {
+	return p.Status == prunning
+}
+
+func (p *P) Syscall() bool {
+	return p.Status == psyscall
+}
+
+func (p *P) Gcstop() bool {
+	return p.Status == pgcstop
+}
+
+func (p *P) Dead() bool {
+	return p.Status == pdead
 }
 
 // Sched is the global goroutine scheduler
 type Sched struct {
-	MidleCount     int32 // number of idle m's waiting for work
-	MspinningCount uint32
-	MfreedCount    uint32 // cumulative number of freed m's
-	PidleCount     int32
-	RunqSize       int32 // global runnable queue size
+	Nmidle     int32 // number of idle m's waiting for work
+	Nmspinning uint32
+	Nmfreed    uint32 // cumulative number of freed m's
+	Npidle     int32  // number of idle p's
+	Runqsize   int32  // global runnable queue size
 }

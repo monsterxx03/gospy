@@ -15,6 +15,7 @@ import (
 // PSummary holds process summary info
 type PSummary struct {
 	BinPath         string
+	Ps              []*P
 	ThreadsTotal    int
 	ThreadsSleeping int
 	ThreadsStopped  int
@@ -30,10 +31,17 @@ type PSummary struct {
 }
 
 func (s PSummary) String() string {
+	plines := ""
+	for _, p := range s.Ps {
+		l := fmt.Sprintf("P%d %s, schedtick: %d, syscalltick: %d\n", p.ID, p.Status.String(), p.Schedtick, p.Syscalltick)
+		plines += l
+	}
 	return fmt.Sprintf("bin: %s, goVer: %s, gomaxprocs: %d\n"+
+		"%s"+
 		"Threads: %d total, %d running, %d sleeping, %d stopped, %d zombie\n"+
 		"Goroutines: %d total, %d idle, %d running, %d syscall, %d waiting\n",
 		s.BinPath, s.GoVersion, s.Gomaxprocs,
+		plines,
 		s.ThreadsTotal, s.ThreadsRunning, s.ThreadsSleeping, s.ThreadsStopped, s.ThreadsZombie,
 		s.GTotal, s.GIdle, s.GRunning, s.GSyscall, s.GWaiting,
 	)
@@ -160,11 +168,11 @@ func (p *Process) parseM(maddr uint64) (*M, error) {
 	if maddr == 0 {
 		return nil, nil
 	}
-	mstruct := p.bin.MStruct
+	strt := p.bin.MStruct
 	buf := make([]byte, POINTER_SIZE)
 	// m.procid is thread id:
 	// https://github.com/golang/go/blob/release-branch.go1.13/src/runtime/os_linux.go#L336
-	if err := p.ReadData(buf, maddr+uint64(mstruct.Members["procid"].StrtOffset)); err != nil {
+	if err := p.ReadData(buf, strt.GetFieldAddr(maddr, "procid")); err != nil {
 		return nil, err
 	}
 	return &M{ID: toUint64(buf)}, nil
@@ -173,15 +181,25 @@ func (p *Process) parseM(maddr uint64) (*M, error) {
 func (p *Process) parseP(paddr uint64) (*P, error) {
 	data := make([]byte, 4)
 	strt := p.bin.PStruct
-	if err := p.ReadData(data, paddr+uint64(strt.Members["id"].StrtOffset)); err != nil {
+	if err := p.ReadData(data, strt.GetFieldAddr(paddr, "id")); err != nil {
 		return nil, err
 	}
 	id := toUint32(data)
-	if err := p.ReadData(data, paddr+uint64(strt.Members["status"].StrtOffset)); err != nil {
+	if err := p.ReadData(data, strt.GetFieldAddr(paddr, "status")); err != nil {
 		return nil, err
 	}
 	status := pstatus(toUint32(data))
-	return &P{ID: int32(id), Status: status}, nil
+
+	if err := p.ReadData(data, strt.GetFieldAddr(paddr, "schedtick")); err != nil {
+		return nil, err
+	}
+	schedtick := toUint32(data)
+
+	if err := p.ReadData(data, strt.GetFieldAddr(paddr, "syscalltick")); err != nil {
+		return nil, err
+	}
+	syscalltick := toUint32(data)
+	return &P{ID: int32(id), Status: status, Schedtick: schedtick, Syscalltick: syscalltick}, nil
 }
 
 func (p *Process) parseG(gaddr uint64) (*G, error) {
@@ -264,7 +282,7 @@ func (p *Process) SchedInfo() error {
 	addr := p.bin.SchedAddr
 	strt := p.bin.SchedtStruct
 	data := make([]byte, 4)
-	err := p.ReadData(data, addr+uint64(strt.Members["runqsize"].StrtOffset))
+	err := p.ReadData(data, strt.GetFieldAddr(addr, "runqsize"))
 	if err != nil {
 		return err
 	}
@@ -351,6 +369,7 @@ func (p *Process) Summary(lock bool) (*PSummary, error) {
 	if err != nil {
 		return nil, err
 	}
+	// threads
 	trunning, tsleeping, tstopped, tzombie := 0, 0, 0, 0
 	for _, t := range p.threads {
 		if t.Running() {
@@ -363,6 +382,7 @@ func (p *Process) Summary(lock bool) (*PSummary, error) {
 			tzombie++
 		}
 	}
+	// gs
 	gs, err := p.GetGs(false)
 	if err != nil {
 		return nil, err
@@ -373,13 +393,19 @@ func (p *Process) Summary(lock bool) (*PSummary, error) {
 			gidle++
 		} else if g.Running() {
 			grunning++
-		} else if g.Syscalling() {
+		} else if g.Syscall() {
 			gsyscall++
 		} else if g.Waiting() {
 			gwaiting++
 		}
 	}
-	sum := &PSummary{BinPath: p.bin.Path, ThreadsTotal: len(p.threads),
+	// ps
+	ps, err := p.GetPs(false)
+	if err != nil {
+		return nil, err
+	}
+
+	sum := &PSummary{BinPath: p.bin.Path, Ps: ps, ThreadsTotal: len(p.threads),
 		ThreadsRunning: trunning, ThreadsSleeping: tsleeping, ThreadsStopped: tstopped, ThreadsZombie: tzombie,
 		GTotal: len(gs), GIdle: gidle, GRunning: grunning, GSyscall: gsyscall, GWaiting: gwaiting,
 		GoVersion: goVer, Gomaxprocs: gomaxprocs}

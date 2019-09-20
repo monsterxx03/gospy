@@ -52,6 +52,11 @@ func NewTerm(p *proc.Process, interval int, nonblocking bool, pcType string) *Te
 	return &Term{summary: sum, top: table, refreshInterval: time.Duration(interval), proc: p, nonblocking: nonblocking, pcType: pcType}
 }
 
+func (t *Term) summaryHeight() int {
+	n, _ := t.proc.Gomaxprocs()
+	return SUMMARY_HEIGHT + n
+}
+
 func (t *Term) RefreshSummary() error {
 	sum, err := t.proc.Summary(!t.nonblocking)
 	if err != nil {
@@ -125,8 +130,8 @@ func (t *Term) Display() error {
 
 	tWidth, _ := ui.TerminalDimensions()
 
-	t.summary.SetRect(0, 0, tWidth, SUMMARY_HEIGHT)
-	t.top.SetRect(0, SUMMARY_HEIGHT, tWidth, TOP_HEIGHT)
+	t.summary.SetRect(0, 0, tWidth, t.summaryHeight())
+	t.top.SetRect(0, t.summaryHeight(), tWidth, TOP_HEIGHT)
 	if err := t.Refresh(); err != nil {
 		return err
 	}
@@ -141,8 +146,8 @@ func (t *Term) Display() error {
 				return nil
 			case "<Resize>":
 				payload := e.Payload.(ui.Resize)
-				t.summary.SetRect(0, 0, payload.Width, SUMMARY_HEIGHT)
-				t.top.SetRect(0, SUMMARY_HEIGHT, payload.Width, TOP_HEIGHT)
+				t.summary.SetRect(0, 0, payload.Width, t.summaryHeight())
+				t.top.SetRect(0, t.summaryHeight(), payload.Width, TOP_HEIGHT)
 				ui.Clear()
 				ui.Render(t.summary, t.top)
 			}
