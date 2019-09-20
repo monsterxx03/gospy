@@ -8,27 +8,36 @@ learned a lot from [delve](https://github.com/go-delve/delve)
 
 Get summary info about go process, and what every goroutine is doing:  `sudo ./gospy summary  --pid 1234`
 
-    bin: /home/will/repos/snet/bin/snet, goVer: 1.12.1
-    Threads: 133 total, 0 running, 133 sleeping, 0 stopped, 0 zombie
-    Goroutines: 242 total, 0 idle, 0 running, 112 syscall, 130 waiting
+    bin: /home/will/Downloads/prometheus-2.12.0.linux-amd64/prometheus, goVer: 1.12.8, gomaxprocs: 6
+    P0 idle, schedtick: 642, syscalltick: 81
+    P1 idle, schedtick: 959, syscalltick: 67
+    P2 idle, schedtick: 992, syscalltick: 32
+    P3 idle, schedtick: 581, syscalltick: 17
+    P4 idle, schedtick: 89, syscalltick: 8
+    P5 idle, schedtick: 231, syscalltick: 5
+    Threads: 14 total, 0 running, 14 sleeping, 0 stopped, 0 zombie
+    Goroutines: 44 total, 0 idle, 0 running, 5 syscall, 39 waiting
 
     goroutines:
 
     1 - waiting for chan receive: rt0_go (/usr/local/go/src/runtime/asm_amd64.s:202) 
     2 - waiting for force gc (idle): 5 (/usr/local/go/src/runtime/proc.go:240) 
     3 - waiting for GC sweep wait: gcenable (/usr/local/go/src/runtime/mgc.go:209) 
-    4 - waiting for timer goroutine (idle): addtimerLocked (/usr/local/go/src/runtime/time.go:169) 
-    7 - waiting for GC worker (idle): gcBgMarkStartWorkers (/usr/local/go/src/runtime/mgc.go:1785) 
-    8 - waiting for GC worker (idle): gcBgMarkStartWorkers (/usr/local/go/src/runtime/mgc.go:1785) 
-    9 - waiting for GC worker (idle): gcBgMarkStartWorkers (/usr/local/go/src/runtime/mgc.go:1785) 
-    12 - waiting for IO wait: Run (/home/will/repos/snet/server.go:46) 
-    13 - syscall: handle (/home/will/repos/snet/server.go:71) 
-    15 - waiting for semacquire: Run (/home/will/repos/snet/server.go:46) 
-    16 - syscall: handle (/home/will/repos/snet/server.go:71) 
-    18 - waiting for finalizer wait: createfing (/usr/local/go/src/runtime/mfinal.go:156) 
-    19 - waiting for sleep: newReqList (/home/will/go/pkg/mod/github.com/shadowsocks/shadowsocks-go@v0.0.0-20190307081127-ac922d10041c/shadowsocks/udprelay.go:86) 
-    20 - syscall: 0 (/usr/local/go/src/os/signal/signal_unix.go:30) 
-    27 - waiting for IO wait: main (/home/will/repos/snet/main.go:95) 
+    8 - syscall: addtimerLocked (/usr/local/go/src/runtime/time.go:169) 
+    9 - waiting for select: 0 (/app/vendor/go.opencensus.io/stats/view/worker.go:33) 
+    16 - waiting for GC worker (idle): gcBgMarkStartWorkers (/usr/local/go/src/runtime/mgc.go:1785) 
+    17 - waiting for finalizer wait: createfing (/usr/local/go/src/runtime/mfinal.go:156) 
+    19 - syscall: 0 (/usr/local/go/src/os/signal/signal_unix.go:30) 
+    22 - waiting for GC worker (idle): gcBgMarkStartWorkers (/usr/local/go/src/runtime/mgc.go:1785) 
+    23 - waiting for GC worker (idle): gcBgMarkStartWorkers (/usr/local/go/src/runtime/mgc.go:1785) 
+    38 - waiting for GC worker (idle): gcBgMarkStartWorkers (/usr/local/go/src/runtime/mgc.go:1785) 
+    49 - waiting for GC worker (idle): gcBgMarkStartWorkers (/usr/local/go/src/runtime/mgc.go:1785) 
+    50 - waiting for GC worker (idle): gcBgMarkStartWorkers (/usr/local/go/src/runtime/mgc.go:1785) 
+    74 - waiting for select: sync (/app/scrape/scrape.go:408) 
+    75 - syscall: addtimerLocked (/usr/local/go/src/runtime/time.go:169) 
+    84 - syscall: addtimerLocked (/usr/local/go/src/runtime/time.go:169) 
+    85 - waiting for select: Run (/app/vendor/github.com/oklog/run/group.go:36) 
+    ...
 
 
 A top like interface, aggregate goroutines by functions: `sudo ./gospy top --pid 1234`
