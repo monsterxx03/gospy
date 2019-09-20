@@ -67,13 +67,15 @@ type StrtMember struct {
 }
 
 func Load(pid int, exe string) (*Binary, error) {
+	var err error
 	path := fmt.Sprintf("/proc/%d/exe", pid)
 	if exe != "" {
 		path = exe
-	}
-	path, err := os.Readlink(path)
-	if err != nil {
-		return nil, err
+	} else {
+		path, err = os.Readlink(path)
+		if err != nil {
+			return nil, err
+		}
 	}
 	f, err := os.Open(path)
 	if err != nil {

@@ -413,7 +413,7 @@ func (p *Process) handlePtraceFuncs() {
 }
 
 // New a Process struct for target pid
-func New(pid int) (*Process, error) {
+func New(pid int, bin string) (*Process, error) {
 	// TODO support pass in external debug binary
 	self, err := os.Readlink("/proc/self/ns/mnt")
 	if err != nil {
@@ -426,11 +426,11 @@ func New(pid int) (*Process, error) {
 	if self != target {
 		return nil, fmt.Errorf("target process in another namespace, don't support now")
 	}
-	bin, err := gbin.Load(pid, "")
+	b, err := gbin.Load(pid, bin)
 	if err != nil {
 		return nil, err
 	}
-	if err := bin.Initialize(); err != nil {
+	if err := b.Initialize(); err != nil {
 		return nil, err
 	}
 	memFile, err := os.Open(fmt.Sprintf("/proc/%d/mem", pid))
@@ -439,7 +439,7 @@ func New(pid int) (*Process, error) {
 	}
 	p := &Process{
 		ID:             pid,
-		bin:            bin,
+		bin:            b,
 		pLock:          new(sync.Mutex),
 		memFile:        memFile,
 		threads:        make(map[int]*Thread),
