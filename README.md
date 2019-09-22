@@ -42,12 +42,14 @@ Get summary info about go process, and what every goroutine is doing:  `sudo ./g
     ...
 
 
-A top like interface, aggregate goroutines by functions: `sudo ./gospy top --pid 1234`
-
 If you know something about golang's GMP scheduling model, following may be instresting:
 
 - If a `P` is running, it wil have an associated `M` (curM).
 - A `G` (goroutine) maybe have a associated `M`, even it's not running(the M won't be binded to any P).
+
+
+
+A top like interface, aggregate goroutines by functions: `sudo ./gospy top --pid 1234`
 
 
 ![top](images/top.png)
