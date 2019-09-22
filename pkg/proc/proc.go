@@ -34,7 +34,11 @@ type PSummary struct {
 func (s PSummary) String() string {
 	plines := ""
 	for _, p := range s.Ps {
-		l := fmt.Sprintf("P%d %s, schedtick: %d, syscalltick: %d\n", p.ID, p.Status.String(), p.Schedtick, p.Syscalltick)
+		minfo := "nil"
+		if p.M != nil {
+			minfo = fmt.Sprintf("M%d", p.M.ID)
+		}
+		l := fmt.Sprintf("P%d %s, schedtick: %d, syscalltick: %d, curM: %s\n", p.ID, p.Status.String(), p.Schedtick, p.Syscalltick, minfo)
 		plines += l
 	}
 	return fmt.Sprintf("bin: %s, goVer: %s, gomaxprocs: %d\n"+
@@ -114,6 +118,7 @@ func (p *Process) GetPs(lock bool) ([]*P, error) {
 		}
 		_p, err := p.parseP(addr)
 		if err != nil {
+			glog.Errorf("Failed to parse runtime.p at %d", err)
 			return nil, err
 		}
 		result = append(result, _p)
@@ -171,12 +176,18 @@ func (p *Process) parseM(maddr uint64) (*M, error) {
 	}
 	strt := p.bin.MStruct
 	buf := make([]byte, POINTER_SIZE)
+	if err := p.ReadData(buf, strt.GetFieldAddr(maddr, "id")); err != nil {
+		return nil, err
+	}
+	id := toUint64(buf)
+
 	// m.procid is thread id:
 	// https://github.com/golang/go/blob/release-branch.go1.13/src/runtime/os_linux.go#L336
 	if err := p.ReadData(buf, strt.GetFieldAddr(maddr, "procid")); err != nil {
 		return nil, err
 	}
-	return &M{ID: toUint64(buf)}, nil
+	procid := toUint64(buf)
+	return &M{ID: id, ProcID: procid}, nil
 }
 
 func (p *Process) parseP(paddr uint64) (*P, error) {
@@ -200,7 +211,16 @@ func (p *Process) parseP(paddr uint64) (*P, error) {
 		return nil, err
 	}
 	syscalltick := toUint32(data)
-	return &P{ID: int32(id), Status: status, Schedtick: schedtick, Syscalltick: syscalltick}, nil
+
+	maddr, err := p.ReadVMA(strt.GetFieldAddr(paddr, "m"))
+	if err != nil {
+		return nil, err
+	}
+	m, err := p.parseM(maddr)
+	if err != nil {
+		return nil, err
+	}
+	return &P{ID: int32(id), Status: status, Schedtick: schedtick, Syscalltick: syscalltick, M: m}, nil
 }
 
 func (p *Process) parseG(gaddr uint64) (*G, error) {
@@ -230,13 +250,13 @@ func (p *Process) parseG(gaddr uint64) (*G, error) {
 	startPC := toUint64(buf[addr : addr+8])
 	addr = uint64(gmb["waitreason"].StrtOffset)
 	waitreason := gwaitReason(buf[addr])
-
 	addr = uint64(gmb["m"].StrtOffset)
 	maddr := toUint64(buf[addr : addr+8])
 	m, err := p.parseM(maddr)
 	if err != nil {
 		return nil, err
 	}
+
 	g := &G{
 		ID:         goid,
 		Status:     gstatus(status),

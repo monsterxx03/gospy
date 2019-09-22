@@ -85,9 +85,6 @@ func (g *G) String() string {
 	if g.Status == gwaiting {
 		result += fmt.Sprintf("reason: %s, ", g.WaitReason)
 	}
-	if g.M != nil {
-		result += fmt.Sprintf("thread: %d", g.M.ID)
-	}
 	return result
 }
 
@@ -100,7 +97,8 @@ func (g *G) ThreadID() uint64 {
 
 // M is runtime.m struct
 type M struct {
-	ID uint64
+	ID     uint64
+	ProcID uint64
 }
 
 // P (processor) is runtime.p struct

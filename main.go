@@ -85,7 +85,11 @@ func main() {
 					if g.Waiting() {
 						status = "waiting for " + g.WaitReason.String()
 					}
-					fmt.Printf("%d - %s: %s \n", g.ID, status, g.GetLocation(pcType).String())
+					if g.M == nil {
+						fmt.Printf("%d - %s: %s \n", g.ID, status, g.GetLocation(pcType).String())
+					} else {
+						fmt.Printf("%d(M%d)- %s: %s \n", g.ID, g.M.ID, status, g.GetLocation(pcType).String())
+					}
 				}
 				return nil
 			},
