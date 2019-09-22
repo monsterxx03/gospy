@@ -75,10 +75,7 @@ func main() {
 					return err
 				}
 				fmt.Println(sum)
-				gs, err := p.GetGs(!nonblocking)
-				if err != nil {
-					return err
-				}
+				gs := sum.Gs
 				sort.Slice(gs, func(i, j int) bool {
 					return gs[i].ID < gs[j].ID
 				})

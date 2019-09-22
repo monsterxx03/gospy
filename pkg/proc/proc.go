@@ -15,6 +15,7 @@ import (
 // PSummary holds process summary info
 type PSummary struct {
 	BinPath         string
+	Gs              []*G
 	Ps              []*P
 	ThreadsTotal    int
 	ThreadsSleeping int
@@ -405,7 +406,7 @@ func (p *Process) Summary(lock bool) (*PSummary, error) {
 		return nil, err
 	}
 
-	sum := &PSummary{BinPath: p.bin.Path, Ps: ps, ThreadsTotal: len(p.threads),
+	sum := &PSummary{BinPath: p.bin.Path, Gs: gs, Ps: ps, ThreadsTotal: len(p.threads),
 		ThreadsRunning: trunning, ThreadsSleeping: tsleeping, ThreadsStopped: tstopped, ThreadsZombie: tzombie,
 		GTotal: len(gs), GIdle: gidle, GRunning: grunning, GSyscall: gsyscall, GWaiting: gwaiting,
 		GoVersion: goVer, Gomaxprocs: gomaxprocs}

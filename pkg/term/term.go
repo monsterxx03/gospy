@@ -57,20 +57,23 @@ func (t *Term) summaryHeight() int {
 	return SUMMARY_HEIGHT + n
 }
 
-func (t *Term) RefreshSummary() error {
+func (t *Term) RefreshSummary() (*proc.PSummary, error) {
 	sum, err := t.proc.Summary(!t.nonblocking)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	t.summary.Text = sum.String()
 	ui.Render(t.summary)
-	return nil
+	return sum, nil
 }
 
-func (t *Term) RefreshTop() error {
-	gs, err := t.proc.GetGs(!t.nonblocking)
-	if err != nil {
-		return err
+func (t *Term) RefreshTop(gs []*proc.G) error {
+	var err error
+	if len(gs) == 0 {
+		gs, err = t.proc.GetGs(!t.nonblocking)
+		if err != nil {
+			return err
+		}
 	}
 	fnStats := t.aggregateGoroutines(gs)
 	type kv struct {
@@ -112,10 +115,11 @@ func (t *Term) RefreshTop() error {
 // }
 
 func (t *Term) Refresh() error {
-	if err := t.RefreshSummary(); err != nil {
+	sum, err := t.RefreshSummary()
+	if err != nil {
 		return err
 	}
-	if err := t.RefreshTop(); err != nil {
+	if err := t.RefreshTop(sum.Gs); err != nil {
 		return err
 	}
 	return nil
