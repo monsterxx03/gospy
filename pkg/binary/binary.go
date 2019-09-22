@@ -7,14 +7,20 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
-	"sync"
-
-	"github.com/golang/glog"
 )
 
 const (
 	DW_OP_addr = 0x03
+
+	// type in elf binary
+	UTYPE_VAR    string = "Variable"
+	UTYPE_STRUCT string = "StructType"
 )
+
+type unit struct {
+	name  string
+	utype string
+}
 
 type Location struct {
 	PC   uint64      // program counter
@@ -109,173 +115,64 @@ func Load(pid int, exe string) (*Binary, error) {
 
 // Initialize will pre parse some info from elf binary
 func (b *Binary) Initialize() error {
-	errChan := make(chan error)
-	doneChan := make(chan int)
-	// TODO simplify
-	wg := new(sync.WaitGroup)
-	wg.Add(11)
-	go func(wg *sync.WaitGroup) {
-		defer wg.Done()
-		g, err := b.GetStruct("runtime.g")
-		if err != nil {
-			glog.Errorf("Failed to get runtime.g from %s", b.Path)
-			errChan <- err
-		}
-		b.GStruct = g
-	}(wg)
-	go func(wg *sync.WaitGroup) {
-		defer wg.Done()
-		m, err := b.GetStruct("runtime.m")
-		if err != nil {
-			glog.Errorf("Failed to get runtime.g from %s", b.Path)
-			errChan <- err
-		}
-		b.MStruct = m
-	}(wg)
-	go func(wg *sync.WaitGroup) {
-		defer wg.Done()
-		p, err := b.GetStruct("runtime.p")
-		if err != nil {
-			glog.Errorf("Failed to get runtime.p from %s", b.Path)
-			errChan <- err
-		}
-		b.PStruct = p
-	}(wg)
-	go func(wg *sync.WaitGroup) {
-		defer wg.Done()
-		allglenaddr, err := b.GetVarAddr("runtime.allglen")
-		if err != nil {
-			glog.Errorf("Failed to get runtime.allglen from %s", b.Path)
-			errChan <- err
-		}
-		b.AllglenAddr = allglenaddr
-	}(wg)
-	go func(wg *sync.WaitGroup) {
-		defer wg.Done()
-		schedaddr, err := b.GetVarAddr("runtime.sched")
-		if err != nil {
-			glog.Errorf("Failed to get runtime.sched from %s", b.Path)
-			errChan <- err
-		}
-		b.SchedAddr = schedaddr
-	}(wg)
-	go func(wg *sync.WaitGroup) {
-		defer wg.Done()
-		gobuf, err := b.GetStruct("runtime.gobuf")
-		if err != nil {
-			glog.Errorf("Failed to get runtime.gobuf from %s", b.Path)
-			errChan <- err
-		}
-		b.GobufStruct = gobuf
-	}(wg)
-	go func(wg *sync.WaitGroup) {
-		defer wg.Done()
-		schedt, err := b.GetStruct("runtime.schedt")
-		if err != nil {
-			glog.Errorf("Failed to get runtime.schedt from %s", b.Path)
-			errChan <- err
-		}
-		b.SchedtStruct = schedt
-	}(wg)
-	go func(wg *sync.WaitGroup) {
-		defer wg.Done()
-		allgsaddr, err := b.GetVarAddr("runtime.allgs")
-		if err != nil {
-			glog.Errorf("Failed to get runtime.allgs from %s", b.Path)
-			errChan <- err
-		}
-		b.AllgsAddr = allgsaddr
-	}(wg)
-	go func(wg *sync.WaitGroup) {
-		defer wg.Done()
-		allpaddr, err := b.GetVarAddr("runtime.allp")
-		if err != nil {
-			glog.Errorf("Failed to get runtime.allp from %s", b.Path)
-			errChan <- err
-		}
-		b.AllpAddr = allpaddr
-	}(wg)
-	go func(wg *sync.WaitGroup) {
-		defer wg.Done()
-		goVerAddr, err := b.GetVarAddr("runtime.buildVersion")
-		if err != nil {
-			glog.Errorf("Failed to get runtime.buildVersion from %s", b.Path)
-			errChan <- err
-		}
-		b.GoVerAddr = goVerAddr
-	}(wg)
-	go func(wg *sync.WaitGroup) {
-		defer wg.Done()
-		gomaxprocs, err := b.GetVarAddr("runtime.gomaxprocs")
-		if err != nil {
-			glog.Errorf("Failed to get runtime.gomaxprocs from %s", b.Path)
-			errChan <- err
-		}
-		b.GomaxprocsAddr = gomaxprocs
-	}(wg)
-	go func(wg *sync.WaitGroup) {
-		wg.Wait()
-		doneChan <- 1
-	}(wg)
-	select {
-	case e := <-errChan:
-		return e
-	case <-doneChan:
-		return nil
+	result, err := b.Parse(
+		&unit{"runtime.g", UTYPE_STRUCT},
+		&unit{"runtime.m", UTYPE_STRUCT},
+		&unit{"runtime.p", UTYPE_STRUCT},
+		&unit{"runtime.allglen", UTYPE_VAR},
+		&unit{"runtime.sched", UTYPE_VAR},
+		&unit{"runtime.gobuf", UTYPE_STRUCT},
+		&unit{"runtime.schedt", UTYPE_STRUCT},
+		&unit{"runtime.allgs", UTYPE_VAR},
+		&unit{"runtime.allp", UTYPE_VAR},
+		&unit{"runtime.buildVersion", UTYPE_VAR},
+		&unit{"runtime.gomaxprocs", UTYPE_VAR},
+	)
+	if err != nil {
+		return err
 	}
+	b.GStruct = result["runtime.g"].(*Strt)
+	b.MStruct = result["runtime.m"].(*Strt)
+	b.PStruct = result["runtime.p"].(*Strt)
+	b.AllglenAddr = result["runtime.allglen"].(uint64)
+	b.SchedAddr = result["runtime.sched"].(uint64)
+	b.GobufStruct = result["runtime.gobuf"].(*Strt)
+	b.SchedtStruct = result["runtime.schedt"].(*Strt)
+	b.AllgsAddr = result["runtime.allgs"].(uint64)
+	b.AllpAddr = result["runtime.allp"].(uint64)
+	b.GoVerAddr = result["runtime.buildVersion"].(uint64)
+	b.GomaxprocsAddr = result["runtime.gomaxprocs"].(uint64)
+	return nil
 }
 
-// GetVarAddr will search binary's DWARF info, to find virtual memory address of a global variable
-func (b *Binary) GetVarAddr(varName string) (uint64, error) {
-	data, err := b.bin.DWARF()
-	if err != nil {
-		return 0, err
-	}
-	reader := data.Reader()
-	var addr uint64
-	for {
-		entry, err := reader.Next()
-		if err != nil {
-			return 0, err
-		}
-		if entry == nil {
-			// reach end
-			break
-		}
-		for _, f := range entry.Field {
-			switch f.Val.(type) {
-			case string:
-				if f.Attr.String() == "Name" && f.Val.(string) == varName {
-					// instructions = 1 byte DW_OP type + 8 bytes address
-					instructions, ok := entry.Val(dwarf.AttrLocation).([]byte)
-					if !ok {
-						return 0, fmt.Errorf("Failed to parse %v", entry)
-					}
-					if len(instructions) != 9 {
-						return 0, fmt.Errorf("Read invalid DW_AT_location: %v", instructions)
-					}
-					if instructions[0] != DW_OP_addr {
-						return 0, fmt.Errorf("%s's DW_OP type isn't DW_OP_addr(0x03), don't support to parse: %v", varName, instructions)
-					}
-					// parse left 8 bytes as virtual memory address
-					addr = uint64(binary.LittleEndian.Uint64(instructions[1:]))
-					return addr, nil
-				}
+func getEntryName(entry *dwarf.Entry) string {
+	for _, f := range entry.Field {
+		switch f.Val.(type) {
+		case string:
+			if f.Attr.String() == "Name" {
+				return f.Val.(string)
 			}
 		}
 	}
-	return 0, fmt.Errorf("didn't find address for %s", varName)
+	return ""
 }
 
-func (b *Binary) GetStruct(name string) (*Strt, error) {
+func (b *Binary) Parse(units ...*unit) (map[string]interface{}, error) {
 	data, err := b.bin.DWARF()
 	if err != nil {
 		return nil, err
 	}
-	result := new(Strt)
-	result.Members = make(map[string]*StrtMember)
+	umap := make(map[string]*unit)
+	for _, u := range units {
+		umap[u.name] = u
+	}
+	result := make(map[string]interface{})
 	reader := data.Reader()
 	for {
+		if len(umap) == 0 {
+			// find all targets
+			break
+		}
 		entry, err := reader.Next()
 		if err != nil {
 			return nil, err
@@ -284,39 +181,74 @@ func (b *Binary) GetStruct(name string) (*Strt, error) {
 			// reach end
 			break
 		}
-		if entry.Tag.String() != "StructType" {
+		name := getEntryName(entry)
+		if _, ok := umap[name]; !ok {
 			continue
 		}
-		// example struct entry:
-		//	{Offset:240731
-		//	 Tag:StructType
-		//	 Children:true
-		//	 Field:[{Attr:Name Val:runtime.g Class:ClassString}
-		//			{Attr:ByteSize Val:376 Class:ClassConstant}
-		//			{Attr:Attr(10496) Val:25 Class:ClassConstant}
-		//			{Attr:Attr(10500) Val:427680 Class:ClassAddress}]}
-		// find next DW_TAG_typedef runtime.g
-		// entries between them are member fields
-		findTarget := false
-		var size int64
-		for _, f := range entry.Field {
-			if f.Attr.String() == "Name" && f.Val.(string) == name {
-				findTarget = true
-				result.Name = name
-			} else if f.Attr.String() == "ByteSize" {
-				size = f.Val.(int64)
-			}
-		}
-		if findTarget {
-			result.Size = size
-			err := result.parseMembers(reader)
+		utype := entry.Tag.String()
+		switch utype {
+		case UTYPE_VAR:
+			addr, err := parseVarAddr(name, entry)
 			if err != nil {
 				return nil, err
 			}
+			result[name] = addr
+			delete(umap, name)
+		case UTYPE_STRUCT:
+			strt, err := parseStruct(reader, name, entry)
+			if err != nil {
+				return nil, err
+			}
+			result[name] = strt
+			delete(umap, name)
+		default:
+			continue
 		}
 	}
-	if result.Name == "" || result.Size == 0 {
-		return nil, fmt.Errorf("failed to parse struct %s", name)
+	if len(umap) != 0 {
+		return nil, fmt.Errorf("Failed to parse: %+v", umap)
+	}
+	return result, nil
+}
+
+func parseVarAddr(name string, entry *dwarf.Entry) (uint64, error) {
+	instructions, ok := entry.Val(dwarf.AttrLocation).([]byte)
+	if !ok {
+		return 0, fmt.Errorf("Failed to parse %v", entry)
+	}
+	if len(instructions) != 9 {
+		return 0, fmt.Errorf("Read invalid DW_AT_location: %v", instructions)
+	}
+	if instructions[0] != DW_OP_addr {
+		return 0, fmt.Errorf("%s's DW_OP type isn't DW_OP_addr(0x03), don't support to parse: %v", name, instructions)
+	}
+	// parse left 8 bytes as virtual memory address
+	addr := uint64(binary.LittleEndian.Uint64(instructions[1:]))
+	return addr, nil
+}
+
+func parseStruct(reader *dwarf.Reader, name string, entry *dwarf.Entry) (*Strt, error) {
+	// example struct entry:
+	//	{Offset:240731
+	//	 Tag:StructType
+	//	 Children:true
+	//	 Field:[{Attr:Name Val:runtime.g Class:ClassString}
+	//			{Attr:ByteSize Val:376 Class:ClassConstant}
+	//			{Attr:Attr(10496) Val:25 Class:ClassConstant}
+	//			{Attr:Attr(10500) Val:427680 Class:ClassAddress}]}
+	// find next DW_TAG_typedef runtime.g
+	// entries between them are member fields
+	result := new(Strt)
+	result.Name = name
+	result.Members = make(map[string]*StrtMember)
+	for _, f := range entry.Field {
+		if f.Attr.String() == "ByteSize" {
+			result.Size = f.Val.(int64)
+		}
+	}
+	err := result.parseMembers(reader)
+	if err != nil {
+		return nil, err
 	}
 	return result, nil
 }

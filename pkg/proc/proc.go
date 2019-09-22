@@ -315,7 +315,7 @@ func (p *Process) parseString(addr uint64) (string, error) {
 	bin := p.bin
 
 	// go string is dataPtr(8 bytes) + len(8 bytes), we can parse string
-	// struct from binary with t.bin().GetStruct("string"), but since its
+	// struct from binary with t.bin().Parse, but since its
 	// structure is fixed, we can parse directly here.
 	dataPtr, err := p.ReadVMA(bin.GoVerAddr)
 	if err != nil {
