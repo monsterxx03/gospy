@@ -136,5 +136,6 @@ type Sched struct {
 	Nmspinning uint32
 	Nmfreed    uint32 // cumulative number of freed m's
 	Npidle     int32  // number of idle p's
+	Ngsys      uint32 // number of system goroutines
 	Runqsize   int32  // global runnable queue size
 }

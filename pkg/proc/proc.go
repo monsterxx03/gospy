@@ -43,12 +43,12 @@ func (s PSummary) String() string {
 		plines += l
 	}
 	return fmt.Sprintf("bin: %s, goVer: %s, gomaxprocs: %d\n"+
-		"Sched: NMidle %d, NMspinning %d, NMfreed %d, NPidle %d, Runqsize: %d \n"+
+		"Sched: NMidle %d, NMspinning %d, NMfreed %d, NPidle %d, NGsys %d, Runqsize: %d \n"+
 		"%s"+
 		"Threads: %d total, %d running, %d sleeping, %d stopped, %d zombie\n"+
 		"Goroutines: %d total, %d idle, %d running, %d syscall, %d waiting\n",
 		s.BinPath, s.GoVersion, s.Gomaxprocs,
-		s.Sched.Nmidle, s.Sched.Nmspinning, s.Sched.Nmfreed, s.Sched.Npidle, s.Sched.Runqsize,
+		s.Sched.Nmidle, s.Sched.Nmspinning, s.Sched.Nmfreed, s.Sched.Npidle, s.Sched.Ngsys, s.Sched.Runqsize,
 		plines,
 		s.ThreadsTotal, s.ThreadsRunning, s.ThreadsSleeping, s.ThreadsStopped, s.ThreadsZombie,
 		s.GTotal, s.GIdle, s.GRunning, s.GSyscall, s.GWaiting,
@@ -326,12 +326,17 @@ func (p *Process) SchedInfo() (*Sched, error) {
 	}
 	npidle := int32(toUint32(data))
 
+	if err := p.ReadData(data, strt.GetFieldAddr(addr, "ngsys")); err != nil {
+		return nil, err
+	}
+	ngsys := toUint32(data)
+
 	if err := p.ReadData(data, strt.GetFieldAddr(addr, "runqsize")); err != nil {
 		return nil, err
 	}
 	runqsize := int32(toUint32(data))
 	return &Sched{Nmidle: nmidle, Nmspinning: nmspinning, Nmfreed: nmfreed,
-		Npidle: npidle, Runqsize: runqsize}, nil
+		Npidle: npidle, Ngsys: ngsys, Runqsize: runqsize}, nil
 }
 
 func (p *Process) parseString(addr uint64) (string, error) {
