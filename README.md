@@ -9,6 +9,7 @@ learned a lot from [delve](https://github.com/go-delve/delve)
 Get summary info about go process, and what every goroutine is doing:  `sudo ./gospy summary  --pid 1234`
 
     bin: /home/will/Downloads/prometheus-2.12.0.linux-amd64/prometheus, goVer: 1.12.8, gomaxprocs: 6
+    Sched: NMidle 6, NMspinning 0, NMfreed 0, NPidle 5, Runqsize: 0
     P0 idle, schedtick: 642, syscalltick: 81, curM: M0
     P1 idle, schedtick: 959, syscalltick: 67, curM: nil
     P2 idle, schedtick: 992, syscalltick: 32, curM: nil

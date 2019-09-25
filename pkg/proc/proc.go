@@ -17,6 +17,7 @@ type PSummary struct {
 	BinPath         string
 	Gs              []*G
 	Ps              []*P
+	Sched           *Sched
 	ThreadsTotal    int
 	ThreadsSleeping int
 	ThreadsStopped  int
@@ -42,10 +43,12 @@ func (s PSummary) String() string {
 		plines += l
 	}
 	return fmt.Sprintf("bin: %s, goVer: %s, gomaxprocs: %d\n"+
+		"Sched: NMidle %d, NMspinning %d, NMfreed %d, NPidle %d, Runqsize: %d \n"+
 		"%s"+
 		"Threads: %d total, %d running, %d sleeping, %d stopped, %d zombie\n"+
 		"Goroutines: %d total, %d idle, %d running, %d syscall, %d waiting\n",
 		s.BinPath, s.GoVersion, s.Gomaxprocs,
+		s.Sched.Nmidle, s.Sched.Nmspinning, s.Sched.Nmfreed, s.Sched.Npidle, s.Sched.Runqsize,
 		plines,
 		s.ThreadsTotal, s.ThreadsRunning, s.ThreadsSleeping, s.ThreadsStopped, s.ThreadsZombie,
 		s.GTotal, s.GIdle, s.GRunning, s.GSyscall, s.GWaiting,
@@ -299,16 +302,36 @@ func (p *Process) GoVersion() (string, error) {
 	return p.goVersion, nil
 }
 
-func (p *Process) SchedInfo() error {
+func (p *Process) SchedInfo() (*Sched, error) {
 	addr := p.bin.SchedAddr
 	strt := p.bin.SchedtStruct
 	data := make([]byte, 4)
-	err := p.ReadData(data, strt.GetFieldAddr(addr, "runqsize"))
-	if err != nil {
-		return err
+	if err := p.ReadData(data, strt.GetFieldAddr(addr, "nmidle")); err != nil {
+		return nil, err
 	}
-	fmt.Println(toUint32(data))
-	return nil
+	nmidle := int32(toUint32(data))
+
+	if err := p.ReadData(data, strt.GetFieldAddr(addr, "nmspinning")); err != nil {
+		return nil, err
+	}
+	nmspinning := toUint32(data)
+
+	if err := p.ReadData(data, strt.GetFieldAddr(addr, "nmfreed")); err != nil {
+		return nil, err
+	}
+	nmfreed := toUint32(data)
+
+	if err := p.ReadData(data, strt.GetFieldAddr(addr, "npidle")); err != nil {
+		return nil, err
+	}
+	npidle := int32(toUint32(data))
+
+	if err := p.ReadData(data, strt.GetFieldAddr(addr, "runqsize")); err != nil {
+		return nil, err
+	}
+	runqsize := int32(toUint32(data))
+	return &Sched{Nmidle: nmidle, Nmspinning: nmspinning, Nmfreed: nmfreed,
+		Npidle: npidle, Runqsize: runqsize}, nil
 }
 
 func (p *Process) parseString(addr uint64) (string, error) {
@@ -390,6 +413,10 @@ func (p *Process) Summary(lock bool) (*PSummary, error) {
 	if err != nil {
 		return nil, err
 	}
+	sched, err := p.SchedInfo()
+	if err != nil {
+		return nil, err
+	}
 	// threads
 	trunning, tsleeping, tstopped, tzombie := 0, 0, 0, 0
 	for _, t := range p.threads {
@@ -426,7 +453,7 @@ func (p *Process) Summary(lock bool) (*PSummary, error) {
 		return nil, err
 	}
 
-	sum := &PSummary{BinPath: p.bin.Path, Gs: gs, Ps: ps, ThreadsTotal: len(p.threads),
+	sum := &PSummary{BinPath: p.bin.Path, Gs: gs, Ps: ps, ThreadsTotal: len(p.threads), Sched: sched,
 		ThreadsRunning: trunning, ThreadsSleeping: tsleeping, ThreadsStopped: tstopped, ThreadsZombie: tzombie,
 		GTotal: len(gs), GIdle: gidle, GRunning: grunning, GSyscall: gsyscall, GWaiting: gwaiting,
 		GoVersion: goVer, Gomaxprocs: gomaxprocs}
