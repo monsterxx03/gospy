@@ -9,7 +9,7 @@ learned a lot from [delve](https://github.com/go-delve/delve)
 Get summary info about go process, and what every goroutine is doing:  `sudo ./gospy summary  --pid 1234`
 
     bin: /home/will/Downloads/prometheus-2.12.0.linux-amd64/prometheus, goVer: 1.12.8, gomaxprocs: 6
-    Sched: NMidle 6, NMspinning 0, NMfreed 0, NPidle 5, Runqsize: 0
+    Sched: NMidle 6, NMspinning 0, NMfreed 0, NPidle 5, NGsys 16, Runqsize: 0
     P0 idle, schedtick: 642, syscalltick: 81, curM: M0
     P1 idle, schedtick: 959, syscalltick: 67, curM: nil
     P2 idle, schedtick: 992, syscalltick: 32, curM: nil
@@ -56,6 +56,11 @@ A top like interface, aggregate goroutines by functions: `sudo ./gospy top --pid
 ![top](images/top.png)
 
 
+## Inspect process in contianer
+
+If gospy find target process is running in container, it assumes target process pid is 1 in container namespace, if not, you need to pass `--cpid` flag.
+
+
 ## Limitation
 
 - x86_64 linux only
@@ -66,5 +71,5 @@ A top like interface, aggregate goroutines by functions: `sudo ./gospy top --pid
 
 ## TODO
 
-- Optimize performance
-- Support inspect go process run in container namespace
+[x] Support inspect go process run in container namespace
+[] Optimize performance

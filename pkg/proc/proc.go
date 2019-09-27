@@ -492,27 +492,42 @@ func (p *Process) handlePtraceFuncs() {
 }
 
 // New a Process struct for target pid
-func New(pid int, bin string) (*Process, error) {
-	// TODO support pass in external debug binary
-	self, err := os.Readlink("/proc/self/ns/mnt")
-	if err != nil {
-		return nil, err
+func New(pid int, cpid int, bin string) (*Process, error) {
+	var err error
+	path := fmt.Sprintf("/proc/%d/exe", pid)
+	memFilePath := fmt.Sprintf("/proc/%d/mem", pid)
+	if bin != "" {
+		path = bin
+	} else {
+		self, err := os.Readlink("/proc/self/ns/mnt")
+		if err != nil {
+			return nil, err
+		}
+		target, err := os.Readlink(fmt.Sprintf("/proc/%d/ns/mnt", pid))
+		if err != nil {
+			return nil, err
+		}
+		if self != target {
+			// Not in same namespace
+			path = fmt.Sprintf("/proc/%d/root/proc/%d/exe", pid, cpid)
+			memFilePath = fmt.Sprintf("/proc/%d/root/proc/%d/mem", pid, cpid)
+		} else {
+			// in same namespace
+			path, err = os.Readlink(path)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
-	target, err := os.Readlink(fmt.Sprintf("/proc/%d/ns/mnt", pid))
-	if err != nil {
-		return nil, err
-	}
-	if self != target {
-		return nil, fmt.Errorf("target process in another namespace, don't support now")
-	}
-	b, err := gbin.Load(pid, bin)
+
+	b, err := gbin.Load(path)
 	if err != nil {
 		return nil, err
 	}
 	if err := b.Initialize(); err != nil {
 		return nil, err
 	}
-	memFile, err := os.Open(fmt.Sprintf("/proc/%d/mem", pid))
+	memFile, err := os.Open(memFilePath)
 	if err != nil {
 		return nil, err
 	}

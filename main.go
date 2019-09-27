@@ -22,6 +22,7 @@ func validPC(pc string) error {
 func main() {
 	var bin string
 	var pid int
+	var cpid int
 	var refresh int
 	var nonblocking bool
 	var pcType string
@@ -35,6 +36,12 @@ func main() {
 		Usage:       "target go process id to spy",
 		Required:    true,
 		Destination: &pid,
+	}
+	cpidFlag := cli.IntFlag{
+		Name:        "cpid",
+		Usage:       "pid in container, used if target process is running in another namespace",
+		Value:       1,
+		Destination: &cpid,
 	}
 	refreshFlag := cli.IntFlag{
 		Name:        "refresh",
@@ -61,12 +68,12 @@ func main() {
 			Name:    "summary",
 			Aliases: []string{"s"},
 			Usage:   "Dump go process internal summary",
-			Flags:   []cli.Flag{binFlag, pidFlag, nonblockingFlag, pcFlag},
+			Flags:   []cli.Flag{binFlag, pidFlag, cpidFlag, nonblockingFlag, pcFlag},
 			Action: func(c *cli.Context) error {
 				if err := validPC(pcType); err != nil {
 					return err
 				}
-				p, err := proc.New(pid, bin)
+				p, err := proc.New(pid, cpid, bin)
 				if err != nil {
 					return err
 				}
@@ -98,12 +105,12 @@ func main() {
 			Name:    "top",
 			Aliases: []string{"t"},
 			Usage:   "top like interface of executing functions",
-			Flags:   []cli.Flag{binFlag, pidFlag, refreshFlag, nonblockingFlag, pcFlag},
+			Flags:   []cli.Flag{binFlag, pidFlag, cpidFlag, refreshFlag, nonblockingFlag, pcFlag},
 			Action: func(c *cli.Context) error {
 				if err := validPC(pcType); err != nil {
 					return err
 				}
-				p, err := proc.New(pid, bin)
+				p, err := proc.New(pid, cpid, bin)
 				if err != nil {
 					return err
 				}

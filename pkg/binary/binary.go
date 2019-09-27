@@ -76,17 +76,7 @@ type StrtMember struct {
 	StrtOffset int64  // offset inside struct
 }
 
-func Load(pid int, exe string) (*Binary, error) {
-	var err error
-	path := fmt.Sprintf("/proc/%d/exe", pid)
-	if exe != "" {
-		path = exe
-	} else {
-		path, err = os.Readlink(path)
-		if err != nil {
-			return nil, err
-		}
-	}
+func Load(path string) (*Binary, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
