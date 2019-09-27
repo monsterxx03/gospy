@@ -71,5 +71,5 @@ If gospy find target process is running in container, it assumes target process 
 
 ## TODO
 
-[x] Support inspect go process run in container namespace
-[] Optimize performance
+- [x] Support inspect go process run in container namespace
+- [] Optimize performance
