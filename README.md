@@ -56,11 +56,6 @@ A top like interface, aggregate goroutines by functions: `sudo ./gospy top --pid
 ![top](images/top.png)
 
 
-## Inspect process in contianer
-
-If gospy find target process is running in container, it assumes target process pid is 1 in container namespace, if not, you need to pass `--cpid` flag.
-
-
 ## Limitation
 
 - x86_64 linux only
@@ -71,5 +66,4 @@ If gospy find target process is running in container, it assumes target process 
 
 ## TODO
 
-- [x] Support inspect go process run in container namespace
 - [] Optimize performance
