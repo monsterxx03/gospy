@@ -80,14 +80,6 @@ func (g *G) Dead() bool {
 	return g.Status == gdead
 }
 
-func (g *G) String() string {
-	result := fmt.Sprintf("G%d status: %s, ", g.ID, g.Status)
-	if g.Status == gwaiting {
-		result += fmt.Sprintf("reason: %s, ", g.WaitReason)
-	}
-	return result
-}
-
 func (g *G) ThreadID() uint64 {
 	if g.M == nil {
 		return 0
@@ -108,6 +100,7 @@ type P struct {
 	Schedtick   uint32
 	Syscalltick uint32
 	M           *M
+	Runqsize    int8
 }
 
 func (p *P) Idle() bool {

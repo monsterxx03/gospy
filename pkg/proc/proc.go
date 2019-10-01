@@ -39,7 +39,7 @@ func (s PSummary) String() string {
 		if p.M != nil {
 			minfo = fmt.Sprintf("M%d", p.M.ID)
 		}
-		l := fmt.Sprintf("P%d %s, schedtick: %d, syscalltick: %d, curM: %s\n", p.ID, p.Status.String(), p.Schedtick, p.Syscalltick, minfo)
+		l := fmt.Sprintf("P%d %s, schedtick: %d, syscalltick: %d, curM: %s, runqsize: %d\n", p.ID, p.Status.String(), p.Schedtick, p.Syscalltick, minfo, p.Runqsize)
 		plines += l
 	}
 	return fmt.Sprintf("bin: %s, goVer: %s, gomaxprocs: %d\n"+
@@ -215,6 +215,22 @@ func (p *Process) parseP(paddr uint64) (*P, error) {
 	}
 	syscalltick := toUint32(data)
 
+	qsize := strt.Members["runq"].Size
+	if qsize%POINTER_SIZE != 0 {
+		return nil, fmt.Errorf("invalid runq size %d for p", qsize)
+	}
+	runqdata := make([]byte, qsize)
+	if err := p.ReadData(runqdata, strt.GetFieldAddr(paddr, "runq")); err != nil {
+		return nil, err
+	}
+	var runqlen int8
+	for i := int64(0); i < qsize; i += POINTER_SIZE {
+		gaddr := toUint64(runqdata[i : i+POINTER_SIZE])
+		if gaddr != 0 {
+			runqlen++
+		}
+	}
+
 	maddr, err := p.ReadVMA(strt.GetFieldAddr(paddr, "m"))
 	if err != nil {
 		return nil, err
@@ -223,7 +239,7 @@ func (p *Process) parseP(paddr uint64) (*P, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &P{ID: int32(id), Status: status, Schedtick: schedtick, Syscalltick: syscalltick, M: m}, nil
+	return &P{ID: int32(id), Status: status, Schedtick: schedtick, Syscalltick: syscalltick, M: m, Runqsize: runqlen}, nil
 }
 
 func (p *Process) parseG(gaddr uint64) (*G, error) {

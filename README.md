@@ -10,12 +10,12 @@ Get summary info about go process, and what every goroutine is doing:  `sudo ./g
 
     bin: /home/will/Downloads/prometheus-2.12.0.linux-amd64/prometheus, goVer: 1.12.8, gomaxprocs: 6
     Sched: NMidle 6, NMspinning 0, NMfreed 0, NPidle 5, NGsys 16, Runqsize: 0
-    P0 idle, schedtick: 642, syscalltick: 81, curM: M0
-    P1 idle, schedtick: 959, syscalltick: 67, curM: nil
-    P2 idle, schedtick: 992, syscalltick: 32, curM: nil
-    P3 idle, schedtick: 581, syscalltick: 17, curM: nil
-    P4 idle, schedtick: 89, syscalltick: 8, curM: nil
-    P5 idle, schedtick: 231, syscalltick: 5, curM: nil
+    P0 idle, schedtick: 642, syscalltick: 81, curM: M0, runqsize: 1
+    P1 idle, schedtick: 959, syscalltick: 67, curM: nil, runqsize: 1
+    P2 idle, schedtick: 992, syscalltick: 32, curM: nil, runqsize: 0
+    P3 idle, schedtick: 581, syscalltick: 17, curM: nil, runqsize: 0
+    P4 idle, schedtick: 89, syscalltick: 8, curM: nil, runqsize: 0
+    P5 idle, schedtick: 231, syscalltick: 5, curM: nil, runqsize: 0
     Threads: 14 total, 0 running, 14 sleeping, 0 stopped, 0 zombie
     Goroutines: 44 total, 0 idle, 0 running, 5 syscall, 39 waiting
 
