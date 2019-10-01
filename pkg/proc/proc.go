@@ -227,7 +227,14 @@ func (p *Process) parseP(paddr uint64) (*P, error) {
 	for i := int64(0); i < qsize; i += POINTER_SIZE {
 		gaddr := toUint64(runqdata[i : i+POINTER_SIZE])
 		if gaddr != 0 {
-			runqsize++
+			// should cache g by gaddr during one snapshot
+			g, err := p.parseG(gaddr)
+			if err != nil {
+				return nil, err
+			}
+			if !g.Dead() {
+				runqsize++
+			}
 		}
 	}
 
@@ -243,6 +250,7 @@ func (p *Process) parseP(paddr uint64) (*P, error) {
 }
 
 func (p *Process) parseG(gaddr uint64) (*G, error) {
+	// TODO cache during same snapshot
 	gstruct := p.bin.GStruct
 	gmb := gstruct.Members
 	buf := make([]byte, gstruct.Size)
@@ -321,36 +329,37 @@ func (p *Process) GoVersion() (string, error) {
 func (p *Process) SchedInfo() (*Sched, error) {
 	addr := p.bin.SchedAddr
 	strt := p.bin.SchedtStruct
-	data := make([]byte, 4)
-	if err := p.ReadData(data, strt.GetFieldAddr(addr, "nmidle")); err != nil {
+	data4 := make([]byte, 4)
+	data8 := make([]byte, 8)
+	if err := p.ReadData(data4, strt.GetFieldAddr(addr, "nmidle")); err != nil {
 		return nil, err
 	}
-	nmidle := int32(toUint32(data))
+	nmidle := int32(toUint32(data4))
 
-	if err := p.ReadData(data, strt.GetFieldAddr(addr, "nmspinning")); err != nil {
+	if err := p.ReadData(data4, strt.GetFieldAddr(addr, "nmspinning")); err != nil {
 		return nil, err
 	}
-	nmspinning := toUint32(data)
+	nmspinning := toUint32(data4)
 
-	if err := p.ReadData(data, strt.GetFieldAddr(addr, "nmfreed")); err != nil {
+	if err := p.ReadData(data8, strt.GetFieldAddr(addr, "nmfreed")); err != nil {
 		return nil, err
 	}
-	nmfreed := toUint32(data)
+	nmfreed := toUint64(data8)
 
-	if err := p.ReadData(data, strt.GetFieldAddr(addr, "npidle")); err != nil {
+	if err := p.ReadData(data4, strt.GetFieldAddr(addr, "npidle")); err != nil {
 		return nil, err
 	}
-	npidle := int32(toUint32(data))
+	npidle := int32(toUint32(data4))
 
-	if err := p.ReadData(data, strt.GetFieldAddr(addr, "ngsys")); err != nil {
+	if err := p.ReadData(data4, strt.GetFieldAddr(addr, "ngsys")); err != nil {
 		return nil, err
 	}
-	ngsys := toUint32(data)
+	ngsys := toUint32(data4)
 
-	if err := p.ReadData(data, strt.GetFieldAddr(addr, "runqsize")); err != nil {
+	if err := p.ReadData(data4, strt.GetFieldAddr(addr, "runqsize")); err != nil {
 		return nil, err
 	}
-	runqsize := int32(toUint32(data))
+	runqsize := int32(toUint32(data4))
 	return &Sched{Nmidle: nmidle, Nmspinning: nmspinning, Nmfreed: nmfreed,
 		Npidle: npidle, Ngsys: ngsys, Runqsize: runqsize}, nil
 }
