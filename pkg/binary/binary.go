@@ -51,11 +51,13 @@ type Binary struct {
 	PStruct        *Strt  // parsed runtime.p struct
 	GobufStruct    *Strt  // parsed runtime.gobuf struct
 	SchedtStruct   *Strt  // parsed runtime.schedt struct
+	MStatsStruct   *Strt  // parsed runtime.mstats struct
 	SchedAddr      uint64 // parsed vma of runtime.sched
 	AllglenAddr    uint64 // parsed vma of runtime.allglen
 	AllgsAddr      uint64 // parsed vma of runtime.allgs
 	AllpAddr       uint64 // parsed vma of runtime.allp
 	GomaxprocsAddr uint64 // parsed vma of runtime.gomaxprocs
+	MStatsAddr     uint64 // parsed vma of runtime.memstats
 }
 
 // Strt is a abstruct struct parsed from dwarf info
@@ -117,6 +119,7 @@ func (b *Binary) Initialize() error {
 		&unit{"runtime.allp", UTYPE_VAR},
 		&unit{"runtime.buildVersion", UTYPE_VAR},
 		&unit{"runtime.gomaxprocs", UTYPE_VAR},
+		&unit{"runtime.mstats", UTYPE_STRUCT},
 	)
 	if err != nil {
 		return err
@@ -132,6 +135,7 @@ func (b *Binary) Initialize() error {
 	b.AllpAddr = result["runtime.allp"].(uint64)
 	b.GoVerAddr = result["runtime.buildVersion"].(uint64)
 	b.GomaxprocsAddr = result["runtime.gomaxprocs"].(uint64)
+	b.MStatsStruct = result["runtime.mstats"].(*Strt)
 	return nil
 }
 

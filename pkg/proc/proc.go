@@ -194,26 +194,26 @@ func (p *Process) parseM(maddr uint64) (*M, error) {
 }
 
 func (p *Process) parseP(paddr uint64) (*P, error) {
-	data := make([]byte, 4)
+	data4 := make([]byte, 4)
 	strt := p.bin.PStruct
-	if err := p.ReadData(data, strt.GetFieldAddr(paddr, "id")); err != nil {
+	if err := p.ReadData(data4, strt.GetFieldAddr(paddr, "id")); err != nil {
 		return nil, err
 	}
-	id := toUint32(data)
-	if err := p.ReadData(data, strt.GetFieldAddr(paddr, "status")); err != nil {
+	id := toUint32(data4)
+	if err := p.ReadData(data4, strt.GetFieldAddr(paddr, "status")); err != nil {
 		return nil, err
 	}
-	status := pstatus(toUint32(data))
+	status := pstatus(toUint32(data4))
 
-	if err := p.ReadData(data, strt.GetFieldAddr(paddr, "schedtick")); err != nil {
+	if err := p.ReadData(data4, strt.GetFieldAddr(paddr, "schedtick")); err != nil {
 		return nil, err
 	}
-	schedtick := toUint32(data)
+	schedtick := toUint32(data4)
 
-	if err := p.ReadData(data, strt.GetFieldAddr(paddr, "syscalltick")); err != nil {
+	if err := p.ReadData(data4, strt.GetFieldAddr(paddr, "syscalltick")); err != nil {
 		return nil, err
 	}
-	syscalltick := toUint32(data)
+	syscalltick := toUint32(data4)
 
 	qsize := strt.Members["runq"].Size
 	if qsize%POINTER_SIZE != 0 {
