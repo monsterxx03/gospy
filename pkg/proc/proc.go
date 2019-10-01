@@ -223,11 +223,11 @@ func (p *Process) parseP(paddr uint64) (*P, error) {
 	if err := p.ReadData(runqdata, strt.GetFieldAddr(paddr, "runq")); err != nil {
 		return nil, err
 	}
-	var runqlen int8
+	runqsize := 0
 	for i := int64(0); i < qsize; i += POINTER_SIZE {
 		gaddr := toUint64(runqdata[i : i+POINTER_SIZE])
 		if gaddr != 0 {
-			runqlen++
+			runqsize++
 		}
 	}
 
@@ -239,7 +239,7 @@ func (p *Process) parseP(paddr uint64) (*P, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &P{ID: int32(id), Status: status, Schedtick: schedtick, Syscalltick: syscalltick, M: m, Runqsize: runqlen}, nil
+	return &P{ID: int32(id), Status: status, Schedtick: schedtick, Syscalltick: syscalltick, M: m, Runqsize: runqsize}, nil
 }
 
 func (p *Process) parseG(gaddr uint64) (*G, error) {

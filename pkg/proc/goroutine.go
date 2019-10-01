@@ -100,7 +100,7 @@ type P struct {
 	Schedtick   uint32
 	Syscalltick uint32
 	M           *M
-	Runqsize    int8
+	Runqsize    int
 }
 
 func (p *P) Idle() bool {
