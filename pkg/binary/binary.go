@@ -120,6 +120,7 @@ func (b *Binary) Initialize() error {
 		&unit{"runtime.buildVersion", UTYPE_VAR},
 		&unit{"runtime.gomaxprocs", UTYPE_VAR},
 		&unit{"runtime.mstats", UTYPE_STRUCT},
+		&unit{"runtime.memstats", UTYPE_VAR},
 	)
 	if err != nil {
 		return err
@@ -136,6 +137,7 @@ func (b *Binary) Initialize() error {
 	b.GoVerAddr = result["runtime.buildVersion"].(uint64)
 	b.GomaxprocsAddr = result["runtime.gomaxprocs"].(uint64)
 	b.MStatsStruct = result["runtime.mstats"].(*Strt)
+	b.MStatsAddr = result["runtime.memstats"].(uint64)
 	return nil
 }
 

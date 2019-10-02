@@ -18,6 +18,7 @@ type PSummary struct {
 	Gs              []*G
 	Ps              []*P
 	Sched           *Sched
+	MemStat         *MemStat
 	ThreadsTotal    int
 	ThreadsSleeping int
 	ThreadsStopped  int
@@ -42,13 +43,16 @@ func (s PSummary) String() string {
 		l := fmt.Sprintf("P%d %s, schedtick: %d, syscalltick: %d, curM: %s, runqsize: %d\n", p.ID, p.Status.String(), p.Schedtick, p.Syscalltick, minfo, p.Runqsize)
 		plines += l
 	}
+	// TODO simplify and humanize
 	return fmt.Sprintf("bin: %s, goVer: %s, gomaxprocs: %d\n"+
 		"Sched: NMidle %d, NMspinning %d, NMfreed %d, NPidle %d, NGsys %d, Runqsize: %d \n"+
+		"Mem: HeapAlloc %d, HeapSys %d, HeapLive %d, Nmalloc %d, Nfree %d, PauseTime %d, NumGC %d, NumForcedGC %d, GCCpu %f\n"+
 		"%s"+
 		"Threads: %d total, %d running, %d sleeping, %d stopped, %d zombie\n"+
 		"Goroutines: %d total, %d idle, %d running, %d syscall, %d waiting\n",
 		s.BinPath, s.GoVersion, s.Gomaxprocs,
 		s.Sched.Nmidle, s.Sched.Nmspinning, s.Sched.Nmfreed, s.Sched.Npidle, s.Sched.Ngsys, s.Sched.Runqsize,
+		s.MemStat.HeapAlloc, s.MemStat.HeapSys, s.MemStat.HeapLive, s.MemStat.Nmalloc, s.MemStat.Nfree, s.MemStat.PauseTotalNs, s.MemStat.NumGC, s.MemStat.NumForcedGC, s.MemStat.GCCPUFraction,
 		plines,
 		s.ThreadsTotal, s.ThreadsRunning, s.ThreadsSleeping, s.ThreadsStopped, s.ThreadsZombie,
 		s.GTotal, s.GIdle, s.GRunning, s.GSyscall, s.GWaiting,
@@ -194,38 +198,16 @@ func (p *Process) parseM(maddr uint64) (*M, error) {
 }
 
 func (p *Process) parseP(paddr uint64) (*P, error) {
-	data4 := make([]byte, 4)
+	_p := new(P)
+	if err := p.parseStruct(paddr, p.bin.PStruct, _p); err != nil {
+		return nil, err
+	}
 	strt := p.bin.PStruct
-	if err := p.ReadData(data4, strt.GetFieldAddr(paddr, "id")); err != nil {
-		return nil, err
-	}
-	id := toUint32(data4)
-	if err := p.ReadData(data4, strt.GetFieldAddr(paddr, "status")); err != nil {
-		return nil, err
-	}
-	status := pstatus(toUint32(data4))
 
-	if err := p.ReadData(data4, strt.GetFieldAddr(paddr, "schedtick")); err != nil {
-		return nil, err
-	}
-	schedtick := toUint32(data4)
-
-	if err := p.ReadData(data4, strt.GetFieldAddr(paddr, "syscalltick")); err != nil {
-		return nil, err
-	}
-	syscalltick := toUint32(data4)
-
-	qsize := strt.Members["runq"].Size
-	if qsize%POINTER_SIZE != 0 {
-		return nil, fmt.Errorf("invalid runq size %d for p", qsize)
-	}
-	runqdata := make([]byte, qsize)
-	if err := p.ReadData(runqdata, strt.GetFieldAddr(paddr, "runq")); err != nil {
-		return nil, err
-	}
+	// parse P's local queue size
 	runqsize := 0
-	for i := int64(0); i < qsize; i += POINTER_SIZE {
-		gaddr := toUint64(runqdata[i : i+POINTER_SIZE])
+	for i := 0; i < len(_p.Runq); i += POINTER_SIZE {
+		gaddr := toUint64(_p.Runq[i : i+POINTER_SIZE])
 		if gaddr != 0 {
 			// should cache g by gaddr during one snapshot
 			g, err := p.parseG(gaddr)
@@ -237,7 +219,9 @@ func (p *Process) parseP(paddr uint64) (*P, error) {
 			}
 		}
 	}
+	_p.Runqsize = runqsize
 
+	// parse P's  binding M
 	maddr, err := p.ReadVMA(strt.GetFieldAddr(paddr, "m"))
 	if err != nil {
 		return nil, err
@@ -246,53 +230,39 @@ func (p *Process) parseP(paddr uint64) (*P, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &P{ID: int32(id), Status: status, Schedtick: schedtick, Syscalltick: syscalltick, M: m, Runqsize: runqsize}, nil
+	_p.M = m
+	return _p, nil
 }
 
 func (p *Process) parseG(gaddr uint64) (*G, error) {
 	// TODO cache during same snapshot
-	gstruct := p.bin.GStruct
-	gmb := gstruct.Members
-	buf := make([]byte, gstruct.Size)
-	if err := p.ReadData(buf, gaddr); err != nil {
+	g := new(G)
+	if err := p.parseStruct(gaddr, p.bin.GStruct, g); err != nil {
 		return nil, err
 	}
-	addr := uint64(gmb["atomicstatus"].StrtOffset)
-	status := toUint32(buf[addr : addr+8])
-	if status == gdead {
-		return &G{Status: gstatus(status)}, nil
+	if g.Status == gdead {
+		return &G{Status: gdead}, nil
 	}
 
-	addr = uint64(gmb["goid"].StrtOffset)
-	goid := toUint64(buf[addr : addr+8])
-
+	// parse pc from g.sched
 	gobuf := p.bin.GobufStruct
-	schedStart := gmb["sched"].StrtOffset
-	addr = uint64(schedStart + gobuf.Members["pc"].StrtOffset)
-	pc := toUint64(buf[addr : addr+8])
-
-	addr = uint64(gmb["gopc"].StrtOffset)
-	goPC := toUint64(buf[addr : addr+8])
-	addr = uint64(gmb["startpc"].StrtOffset)
-	startPC := toUint64(buf[addr : addr+8])
-	addr = uint64(gmb["waitreason"].StrtOffset)
-	waitreason := gwaitReason(buf[addr])
-	addr = uint64(gmb["m"].StrtOffset)
-	maddr := toUint64(buf[addr : addr+8])
-	m, err := p.parseM(maddr)
+	schedStart := p.bin.GStruct.Members["sched"].StrtOffset
+	addr := g.SchedPtr + uint64(schedStart+gobuf.Members["pc"].StrtOffset)
+	pc, err := p.ReadVMA(addr)
 	if err != nil {
 		return nil, err
 	}
+	g.CurLoc = p.getLocation(pc)
 
-	g := &G{
-		ID:         goid,
-		Status:     gstatus(status),
-		WaitReason: gwaitReason(waitreason),
-		M:          m,
-		CurLoc:     p.getLocation(pc),
-		GoLoc:      p.getLocation(goPC),
-		StartLoc:   p.getLocation(startPC),
+	m, err := p.parseM(g.MPtr)
+	if err != nil {
+		return nil, err
 	}
+	g.M = m
+
+	// g.CurLoc = g.Sche
+	g.GoLoc = p.getLocation(g.Gopc)
+	g.StartLoc = p.getLocation(g.Startpc)
 	return g, nil
 }
 
@@ -327,41 +297,19 @@ func (p *Process) GoVersion() (string, error) {
 }
 
 func (p *Process) SchedInfo() (*Sched, error) {
-	addr := p.bin.SchedAddr
-	strt := p.bin.SchedtStruct
-	data4 := make([]byte, 4)
-	data8 := make([]byte, 8)
-	if err := p.ReadData(data4, strt.GetFieldAddr(addr, "nmidle")); err != nil {
+	sched := new(Sched)
+	if err := p.parseStruct(p.bin.SchedAddr, p.bin.SchedtStruct, sched); err != nil {
 		return nil, err
 	}
-	nmidle := int32(toUint32(data4))
+	return sched, nil
+}
 
-	if err := p.ReadData(data4, strt.GetFieldAddr(addr, "nmspinning")); err != nil {
+func (p *Process) MemStat() (*MemStat, error) {
+	mem := new(MemStat)
+	if err := p.parseStruct(p.bin.MStatsAddr, p.bin.MStatsStruct, mem); err != nil {
 		return nil, err
 	}
-	nmspinning := toUint32(data4)
-
-	if err := p.ReadData(data8, strt.GetFieldAddr(addr, "nmfreed")); err != nil {
-		return nil, err
-	}
-	nmfreed := toUint64(data8)
-
-	if err := p.ReadData(data4, strt.GetFieldAddr(addr, "npidle")); err != nil {
-		return nil, err
-	}
-	npidle := int32(toUint32(data4))
-
-	if err := p.ReadData(data4, strt.GetFieldAddr(addr, "ngsys")); err != nil {
-		return nil, err
-	}
-	ngsys := toUint32(data4)
-
-	if err := p.ReadData(data4, strt.GetFieldAddr(addr, "runqsize")); err != nil {
-		return nil, err
-	}
-	runqsize := int32(toUint32(data4))
-	return &Sched{Nmidle: nmidle, Nmspinning: nmspinning, Nmfreed: nmfreed,
-		Npidle: npidle, Ngsys: ngsys, Runqsize: runqsize}, nil
+	return mem, nil
 }
 
 func (p *Process) parseString(addr uint64) (string, error) {
@@ -383,6 +331,17 @@ func (p *Process) parseString(addr uint64) (string, error) {
 		return "", err
 	}
 	return string(blocks), nil
+}
+
+func (p *Process) parseStruct(addr uint64, binStrt *gbin.Strt, strter GoStructer) error {
+	buf := make([]byte, binStrt.Size)
+	if err := p.ReadData(buf, addr); err != nil {
+		return err
+	}
+	if err := strter.Parse(binStrt, buf); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (p *Process) getLocation(addr uint64) *gbin.Location {
@@ -483,7 +442,12 @@ func (p *Process) Summary(lock bool) (*PSummary, error) {
 		return nil, err
 	}
 
-	sum := &PSummary{BinPath: p.bin.Path, Gs: gs, Ps: ps, ThreadsTotal: len(p.threads), Sched: sched,
+	memstat, err := p.MemStat()
+	if err != nil {
+		return nil, err
+	}
+
+	sum := &PSummary{BinPath: p.bin.Path, Gs: gs, Ps: ps, ThreadsTotal: len(p.threads), Sched: sched, MemStat: memstat,
 		ThreadsRunning: trunning, ThreadsSleeping: tsleeping, ThreadsStopped: tstopped, ThreadsZombie: tzombie,
 		GTotal: len(gs), GIdle: gidle, GRunning: grunning, GSyscall: gsyscall, GWaiting: gwaiting,
 		GoVersion: goVer, Gomaxprocs: gomaxprocs}
