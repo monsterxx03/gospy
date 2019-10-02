@@ -2,8 +2,9 @@ package proc
 
 import (
 	"fmt"
-	gbin "gospy/pkg/binary"
 	"reflect"
+
+	gbin "gospy/pkg/binary"
 )
 
 type pstatus uint32
@@ -84,7 +85,6 @@ type G struct {
 	WaitReason gwaitReason    `name:"waitreason"`   // if Status ==Gwaiting
 	Startpc    uint64         `name:"startpc"`
 	Gopc       uint64         `name:"gopc"`
-	SchedPtr   uint64         `name:"sched"`
 	MPtr       uint64         `name:"m"`
 	M          *M             // hold worker thread info
 	CurLoc     *gbin.Location // runtime location

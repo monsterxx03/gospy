@@ -247,7 +247,7 @@ func (p *Process) parseG(gaddr uint64) (*G, error) {
 	// parse pc from g.sched
 	gobuf := p.bin.GobufStruct
 	schedStart := p.bin.GStruct.Members["sched"].StrtOffset
-	addr := g.SchedPtr + uint64(schedStart+gobuf.Members["pc"].StrtOffset)
+	addr := gaddr + uint64(schedStart+gobuf.Members["pc"].StrtOffset)
 	pc, err := p.ReadVMA(addr)
 	if err != nil {
 		return nil, err
