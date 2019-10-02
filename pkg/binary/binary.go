@@ -202,7 +202,7 @@ func (b *Binary) Parse(units ...*unit) (map[string]interface{}, error) {
 		}
 	}
 	if len(umap) != 0 {
-		return nil, fmt.Errorf("Failed to parse: %+v", umap)
+		return nil, fmt.Errorf("Failed to parse: %+v from binary", umap)
 	}
 	return result, nil
 }
@@ -210,7 +210,7 @@ func (b *Binary) Parse(units ...*unit) (map[string]interface{}, error) {
 func parseVarAddr(name string, entry *dwarf.Entry) (uint64, error) {
 	instructions, ok := entry.Val(dwarf.AttrLocation).([]byte)
 	if !ok {
-		return 0, fmt.Errorf("Failed to parse %v", entry)
+		return 0, fmt.Errorf("Failed to parse variable %v from binary", entry)
 	}
 	if len(instructions) != 9 {
 		return 0, fmt.Errorf("Read invalid DW_AT_location: %v", instructions)
