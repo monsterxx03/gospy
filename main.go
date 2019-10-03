@@ -12,6 +12,11 @@ import (
 	"gospy/pkg/term"
 )
 
+var (
+	gitVer  string
+	buildAt string
+)
+
 func validPC(pc string) error {
 	if pc != "current" && pc != "start" && pc != "caller" {
 		return fmt.Errorf("Invalid pc type: %s", pc)
@@ -112,6 +117,16 @@ func main() {
 				if err := t.Display(); err != nil {
 					return err
 				}
+				return nil
+			},
+		},
+		{
+			Name:    "version",
+			Aliases: []string{"v"},
+			Usage:   "print build version",
+			Action: func(c *cli.Context) error {
+				println("Git: " + gitVer)
+				println("Build at: " + buildAt)
 				return nil
 			},
 		},
