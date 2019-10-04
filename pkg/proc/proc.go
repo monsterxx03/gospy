@@ -46,13 +46,15 @@ func (s PSummary) String() string {
 	// TODO simplify and humanize
 	return fmt.Sprintf("bin: %s, goVer: %s, gomaxprocs: %d\n"+
 		"Sched: NMidle %d, NMspinning %d, NMfreed %d, NPidle %d, NGsys %d, Runqsize: %d \n"+
-		"Mem: HeapAlloc %d, HeapSys %d, HeapLive %d, Nmalloc %d, Nfree %d, PauseTime %d, NumGC %d, NumForcedGC %d, GCCpu %f\n"+
+		"Heap: HeapInUse %s, HeapSys %s, HeapLive %s, HeapObjects %d, Nmalloc %d, Nfree %d\n"+
+		"GC: TotalPauseTime %s, NumGC %d, NumForcedGC %d, GCCpu %f\n"+
 		"%s"+
 		"Threads: %d total, %d running, %d sleeping, %d stopped, %d zombie\n"+
 		"Goroutines: %d total, %d idle, %d running, %d syscall, %d waiting\n",
 		s.BinPath, s.GoVersion, s.Gomaxprocs,
 		s.Sched.Nmidle, s.Sched.Nmspinning, s.Sched.Nmfreed, s.Sched.Npidle, s.Sched.Ngsys, s.Sched.Runqsize,
-		s.MemStat.HeapAlloc, s.MemStat.HeapSys, s.MemStat.HeapLive, s.MemStat.Nmalloc, s.MemStat.Nfree, s.MemStat.PauseTotalNs, s.MemStat.NumGC, s.MemStat.NumForcedGC, s.MemStat.GCCPUFraction,
+		humanateBytes(s.MemStat.HeapInuse), humanateBytes(s.MemStat.HeapSys), humanateBytes(s.MemStat.HeapLive), s.MemStat.HeapObjects, s.MemStat.Nmalloc, s.MemStat.Nfree,
+		humanateNS(s.MemStat.PauseTotalNs), s.MemStat.NumGC, s.MemStat.NumForcedGC, s.MemStat.GCCPUFraction,
 		plines,
 		s.ThreadsTotal, s.ThreadsRunning, s.ThreadsSleeping, s.ThreadsStopped, s.ThreadsZombie,
 		s.GTotal, s.GIdle, s.GRunning, s.GSyscall, s.GWaiting,

@@ -197,9 +197,10 @@ func (s *Sched) Parse(binStrt *gbin.Strt, data []byte) error {
 
 // MemStat hold memory usage and gc info (runtime/mstat.go)
 type MemStat struct {
-	HeapAlloc uint64 `name:"heap_alloc"` // bytes allocated and not yet freed
-	HeapSys   uint64 `name:"heap_sys"`   // virtual address space obtained from system for GC'd heap
-	HeapLive  uint64 `name:"heap_live"`  // HeapAlloc - (objects not sweeped)
+	HeapInuse   uint64 `name:"heap_inuse"`   // bytes allocated and not yet freed
+	HeapObjects uint64 `name:"heap_objects"` // total number of allocated objects
+	HeapSys     uint64 `name:"heap_sys"`     // virtual address space obtained from system for GC'd heap
+	HeapLive    uint64 `name:"heap_live"`    // HeapAlloc - (objects not sweeped)
 
 	Nmalloc uint64 `name:"nmalloc"` // number of mallocs
 	Nfree   uint64 `name:"nfree"`   // number of frees
