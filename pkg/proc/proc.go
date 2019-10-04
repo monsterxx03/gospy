@@ -1,12 +1,14 @@
 package proc
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"runtime"
 	"strconv"
 	"sync"
+	"text/tabwriter"
 
 	"github.com/golang/glog"
 	gbin "gospy/pkg/binary"
@@ -34,15 +36,16 @@ type PSummary struct {
 }
 
 func (s PSummary) String() string {
-	plines := ""
+	var b bytes.Buffer
+	pw := tabwriter.NewWriter(&b, 0, 0, 1, ' ', 0)
 	for _, p := range s.Ps {
 		minfo := "nil"
 		if p.M != nil {
 			minfo = fmt.Sprintf("M%d", p.M.ID)
 		}
-		l := fmt.Sprintf("P%d %s, schedtick: %d, syscalltick: %d, curM: %s, runqsize: %d\n", p.ID, p.Status.String(), p.Schedtick, p.Syscalltick, minfo, p.Runqsize)
-		plines += l
+		fmt.Fprintf(pw, "P%d %s\tschedtick: %d\tsyscalltick: %d\tcurM: %s\trunqsize: %d\n", p.ID, p.Status.String(), p.Schedtick, p.Syscalltick, minfo, p.Runqsize)
 	}
+	pw.Flush()
 	// TODO simplify and humanize
 	return fmt.Sprintf("bin: %s, goVer: %s, gomaxprocs: %d\n"+
 		"Sched: NMidle %d, NMspinning %d, NMfreed %d, NPidle %d, NGsys %d, Runqsize: %d \n"+
@@ -55,7 +58,7 @@ func (s PSummary) String() string {
 		s.Sched.Nmidle, s.Sched.Nmspinning, s.Sched.Nmfreed, s.Sched.Npidle, s.Sched.Ngsys, s.Sched.Runqsize,
 		humanateBytes(s.MemStat.HeapInuse), humanateBytes(s.MemStat.HeapSys), humanateBytes(s.MemStat.HeapLive), s.MemStat.HeapObjects, s.MemStat.Nmalloc, s.MemStat.Nfree,
 		humanateNS(s.MemStat.PauseTotalNs), s.MemStat.NumGC, s.MemStat.NumForcedGC, s.MemStat.GCCPUFraction,
-		plines,
+		b.String(),
 		s.ThreadsTotal, s.ThreadsRunning, s.ThreadsSleeping, s.ThreadsStopped, s.ThreadsZombie,
 		s.GTotal, s.GIdle, s.GRunning, s.GSyscall, s.GWaiting,
 	)

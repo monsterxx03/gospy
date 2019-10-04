@@ -8,16 +8,21 @@ learned a lot from [delve](https://github.com/go-delve/delve)
 
 Get summary info about go process, and what every goroutine is doing:  `sudo ./gospy summary  --pid 1234`
 
-    bin: /home/will/Downloads/prometheus-2.12.0.linux-amd64/prometheus, goVer: 1.12.8, gomaxprocs: 6
-    Sched: NMidle 6, NMspinning 0, NMfreed 0, NPidle 5, NGsys 16, Runqsize: 0
-    P0 idle, schedtick: 642, syscalltick: 81, curM: M0, runqsize: 1
-    P1 idle, schedtick: 959, syscalltick: 67, curM: nil, runqsize: 1
-    P2 idle, schedtick: 992, syscalltick: 32, curM: nil, runqsize: 0
-    P3 idle, schedtick: 581, syscalltick: 17, curM: nil, runqsize: 0
-    P4 idle, schedtick: 89, syscalltick: 8, curM: nil, runqsize: 0
-    P5 idle, schedtick: 231, syscalltick: 5, curM: nil, runqsize: 0
-    Threads: 14 total, 0 running, 14 sleeping, 0 stopped, 0 zombie
-    Goroutines: 44 total, 0 idle, 0 running, 5 syscall, 39 waiting
+
+    bin: /bin/prometheus, goVer: 1.12.8, gomaxprocs: 8
+    Sched: NMidle 9, NMspinning 0, NMfreed 0, NPidle 8, NGsys 20, Runqsize: 0 
+    Heap: HeapInUse 16.70MB, HeapSys 62.78MB, HeapLive 14.49MB, HeapObjects 65076, Nmalloc 593803, Nfree 528731
+    GC: TotalPauseTime 3.28min, NumGC 27, NumForcedGC 0, GCCpu 0.000013
+    P0 idle schedtick: 5828 syscalltick: 3308 curM: nil runqsize: 71
+    P1 idle schedtick: 4241 syscalltick: 3441 curM: nil runqsize: 67
+    P2 idle schedtick: 1938 syscalltick: 2449 curM: nil runqsize: 47
+    P3 idle schedtick: 7220 syscalltick: 1668 curM: nil runqsize: 21
+    P4 idle schedtick: 2439 syscalltick: 1322 curM: nil runqsize: 39
+    P5 idle schedtick: 1682 syscalltick: 146  curM: nil runqsize: 4
+    P6 idle schedtick: 4342 syscalltick: 50   curM: nil runqsize: 2
+    P7 idle schedtick: 2327 syscalltick: 17   curM: nil runqsize: 2
+    Threads: 0 total, 0 running, 0 sleeping, 0 stopped, 0 zombie
+    Goroutines: 53 total, 0 idle, 0 running, 7 syscall, 46 waiting
 
     goroutines:
 
