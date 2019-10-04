@@ -79,6 +79,10 @@ type StrtMember struct {
 }
 
 func Load(path string) (*Binary, error) {
+	realpath, err := os.Readlink(path)
+	if err != nil {
+		return nil, err
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -102,7 +106,7 @@ func Load(path string) (*Binary, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Binary{Path: path, bin: b, funcCache: make(map[uint64]*Location), SymTable: symtab}, nil
+	return &Binary{Path: realpath, bin: b, funcCache: make(map[uint64]*Location), SymTable: symtab}, nil
 }
 
 // Initialize will pre parse some info from elf binary
