@@ -61,6 +61,18 @@ A top like interface, aggregate goroutines by functions: `sudo ./gospy top --pid
 ![top](images/top.png)
 
 
+## Target process go version compatibility
+
+Works on go version >= 1.10
+
+tested:
+
+- [x] 1.10
+- [x] 1.10.8
+- [x] 1.11.13
+- [x] 1.12.9 
+- [x] 1.13.1
+
 ## Limitation
 
 - x86_64 linux only
