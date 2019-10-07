@@ -63,7 +63,8 @@ A top like interface, aggregate goroutines by functions: `sudo ./gospy top --pid
 
 ## Target process go version compatibility
 
-Works on go version >= 1.10
+Works on target go version >= 1.10, the DWARF info in binary is different before 1.10: https://golang.org/doc/go1.10#compiler.
+Current code won't work.
 
 tested:
 
@@ -83,4 +84,4 @@ tested:
 
 ## TODO
 
-- [] Optimize performance
+- Optimize performance
