@@ -123,7 +123,7 @@ func main() {
 		{
 			Name: "var",
 			Usage: "dump variable",
-			Flags:   []cli.Flag{cli.StringFlag{Name: "name"}, binFlag, pidFlag, nonblockingFlag},
+			Flags:   []cli.Flag{cli.StringFlag{Name: "name", Required: true}, binFlag, pidFlag, nonblockingFlag},
 			Action: func(c *cli.Context) error {
 				p, err := proc.New(pid, bin)
 				if err != nil {
