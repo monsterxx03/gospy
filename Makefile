@@ -3,3 +3,7 @@ all:
 
 test:
 	go test
+
+data:
+	cd testdata && bash update.sh
+
