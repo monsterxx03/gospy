@@ -74,6 +74,18 @@ tested:
 - [x] 1.12.9 
 - [x] 1.13.1
 
+## Build from source
+
+Minium go version to build: 1.12.0
+
+git clone https://github.com/monsterxx03/gospy.git
+
+gospy is based on go module, please don't put repo under GOPATH, it won't work.
+
+cd gospy && make
+
+binary will be created under gospy/bin/
+
 ## Limitation
 
 - x86_64 linux only
