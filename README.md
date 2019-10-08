@@ -6,7 +6,9 @@ learned a lot from [delve](https://github.com/go-delve/delve)
 
 ## Usage
 
-Get summary info about go process, and what every goroutine is doing:  `sudo ./gospy summary  --pid 1234`
+### summary
+
+`sudo ./gospy summary  --pid 1234`
 
 
     bin: /bin/prometheus, goVer: 1.12.8, gomaxprocs: 8
@@ -54,12 +56,25 @@ If you know something about golang's GMP scheduling model, following may be inst
 - A `G` (goroutine) maybe have a associated `M`, even it's not running(the M won't be binded to any P).
 
 
+###  top
 
-A top like interface, aggregate goroutines by functions: `sudo ./gospy top --pid 1234`
+ aggregate goroutines by functions: `sudo ./gospy top --pid 1234`
 
 
 ![top](images/top.png)
 
+### var
+
+dump a global variable value by name: `sudo ./gospy var --pid 1234 --name runtime.ncpu`
+
+    type: int32, value: 6
+    
+ Support types:
+ 
+- int(8, 16, 32, 64)
+- uint(8, 16, 32, 64)
+- bool
+- string
 
 ## Target process go version compatibility
 

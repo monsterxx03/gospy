@@ -157,6 +157,79 @@ func getEntryName(entry *dwarf.Entry) string {
 	return ""
 }
 
+func (b *Binary) DumpVar(name string) (Var, error) {
+	data , err := b.bin.DWARF()
+	if err != nil {
+		return nil, err
+	}
+	reader := data.Reader()
+	for {
+		entry, err := reader.Next()
+		if err != nil {
+			return nil, err
+		}
+		if entry == nil {
+			break
+		}
+		if entry.Tag.String() != UTYPE_VAR {
+			continue
+		}
+		if getEntryName(entry) != name {
+			continue
+		}
+		// parse vma from entry
+		addr, err := parseVarAddr(name, entry)
+		if err != nil {
+			return nil, err
+		}
+		// parse variable type
+		offset := entry.Val(dwarf.AttrType).(dwarf.Offset)
+		t, err := data.Type(offset)
+		if err != nil {
+			return nil, err
+		}
+		pt, err := parseVarType(name, addr, t)
+		if err != nil {
+			return nil, err
+		}
+		return pt, nil
+	}
+	return nil, fmt.Errorf("Can't find variable %s", name)
+}
+
+func parseVarType(name string, addr uint64, t dwarf.Type) (Var, error) {
+	switch t.(type) {
+	case *dwarf.StructType:
+		strt := t.(*dwarf.StructType)
+		// go string is a kind of struct
+		if strt.StructName == "string" {
+			return &StringVar{CommonType{Name: name, Addr: addr, Size: strt.Size()}}, nil
+		}
+	case *dwarf.UintType:
+		u := t.(*dwarf.UintType)
+		return &UintVar{CommonType{Name: name, Addr: addr, Size: u.Size()}}, nil
+	case *dwarf.IntType:
+		i := t.(*dwarf.IntType)
+		return &IntVar{CommonType{Name: name, Addr: addr, Size: i.Size()}}, nil
+	case *dwarf.BoolType:
+		b := t.(*dwarf.BoolType)
+		return  &BoolVar{CommonType{Name: name, Addr: addr, Size: b.Size()}}, nil
+	case *dwarf.PtrType:
+		_t := t.(*dwarf.PtrType).Type
+		nest_t, err := parseVarType(name, addr, t.(*dwarf.PtrType).Type)
+		if err != nil {
+			return nil, err
+		}
+		res := &PtrVar{
+			CommonType: CommonType{Name: name, Addr: addr,  Size: _t.Size()},
+			Type: nest_t}
+		return res, nil
+	default:
+		return nil, fmt.Errorf("unknown type %s", t)
+	}
+	return nil, nil
+}
+
 func (b *Binary) Parse(units ...*unit) (map[string]interface{}, error) {
 	data, err := b.bin.DWARF()
 	if err != nil {

@@ -103,6 +103,121 @@ func (p *Process) ReadData(data []byte, addr uint64) error {
 	return nil
 }
 
+func (p *Process) DumpVar(name string, lock bool) error {
+	v, err := p.bin.DumpVar(name)
+	if err != nil {
+		return err
+	}
+	if lock {
+		if err := p.Attach(); err != nil {
+			return err
+		}
+		defer p.Detach()
+	}
+	_v, err := p.parseVar(v, v.GetAddr())
+	if err != nil {
+		return err
+	}
+	fmt.Println(_v)
+	return nil
+}
+
+func (p *Process) parseVar(v gbin.Var, addr uint64) (gbin.Var ,error) {
+	switch v.(type) {
+	case *gbin.StringVar:
+		strV := v.(*gbin.StringVar)
+		result, err := p.parseString(addr)
+		if err != nil {
+			return nil, err
+		}
+		strV.Value = result
+		return strV, nil
+	case *gbin.BoolVar:
+		bV := v.(*gbin.BoolVar)
+		result, err := p.parseBool(addr)
+		if err != nil {
+			return nil, err
+		}
+		bV.Value = result
+		return bV, nil
+	case *gbin.UintVar:
+		uV := v.(*gbin.UintVar)
+		switch uV.Size {
+		case 1:
+			res, err := p.parseUint8(addr)
+			if err != nil {
+				return nil, err
+			}
+			uV.Value = res
+		case 2:
+			res, err := p.parseUint16(addr)
+			if err != nil {
+				return nil, err
+			}
+			uV.Value = res
+		case 4:
+			res, err := p.parseUint32(addr)
+			if err != nil {
+				return nil, err
+			}
+			uV.Value = res
+		case 8:
+			res, err := p.parseUint32(addr)
+			if err != nil {
+				return nil, err
+			}
+			uV.Value = res
+		default:
+			return nil, fmt.Errorf("invalid uint size %d", uV.Size)
+		}
+		return uV, nil
+	case *gbin.IntVar:
+		iV := v.(*gbin.IntVar)
+		switch iV.Size {
+		case 1:
+			res, err := p.parseInt8(addr)
+			if err != nil {
+				return nil, err
+			}
+			iV.Value = res
+		case 2:
+			res, err := p.parseInt16(addr)
+			if err != nil {
+				return nil, err
+			}
+			iV.Value = res
+		case 4:
+			res, err := p.parseInt32(addr)
+			if err != nil {
+				return nil, err
+			}
+			iV.Value = res
+		case 8:
+			res, err := p.parseInt64(addr)
+			if err != nil {
+				return nil, err
+			}
+			iV.Value = res
+		default:
+			return nil, fmt.Errorf("Invalid int size %d", iV.Size)
+		}
+		return iV, nil
+	case *gbin.PtrVar:
+		ptr := v.(*gbin.PtrVar)
+		addr, err := p.ReadVMA(addr)
+		if err != nil {
+			return nil, err
+		}
+		_v, err := p.parseVar(ptr.Type, addr)
+		if err != nil {
+			return nil, err
+		}
+		return _v, nil
+	default:
+		return nil, fmt.Errorf("uknown type %v", v)
+	}
+}
+
 // GetPs return P's in runtime.allp
 func (p *Process) GetPs(lock bool) ([]*P, error) {
 	if lock {
@@ -318,24 +433,92 @@ func (p *Process) MemStat() (*MemStat, error) {
 }
 
 func (p *Process) parseString(addr uint64) (string, error) {
-	bin := p.bin
-
 	// go string is dataPtr(8 bytes) + len(8 bytes), we can parse string
 	// struct from binary with t.bin().Parse, but since its
 	// structure is fixed, we can parse directly here.
-	dataPtr, err := p.ReadVMA(bin.GoVerAddr)
+	ptr, err := p.ReadVMA(addr)
 	if err != nil {
 		return "", err
 	}
-	strLen, err := p.ReadVMA(bin.GoVerAddr + POINTER_SIZE)
+	strLen, err := p.ReadVMA(addr + POINTER_SIZE)
 	if err != nil {
 		return "", err
 	}
 	blocks := make([]byte, strLen)
-	if err := p.ReadData(blocks, dataPtr); err != nil {
+	if err := p.ReadData(blocks, ptr); err != nil {
 		return "", err
 	}
 	return string(blocks), nil
+}
+func (p *Process) parseBool(addr uint64) (bool, error) {
+	data := make([]byte, 1)
+	if err := p.ReadData(data, addr); err != nil {
+		return false, err
+	}
+	return data[0] == 1, nil
+}
+
+func (p *Process) parseUint8(addr uint64) (uint8, error) {
+	data := make([]byte, 1)
+	if err := p.ReadData(data, addr); err != nil {
+		return  0, err
+	}
+	return toUint8(data), nil
+}
+
+func (p *Process) parseUint16(addr uint64) (uint16, error) {
+	data := make([]byte, 2)
+	if err := p.ReadData(data, addr); err != nil {
+		return  0, err
+	}
+	return toUint16(data), nil
+}
+
+func (p *Process) parseUint32(addr uint64) (uint32, error) {
+	data := make([]byte, 4)
+	if err := p.ReadData(data, addr); err != nil {
+		return  0, err
+	}
+	return toUint32(data), nil
+}
+func (p *Process) parseUint64(addr uint64) (uint64, error) {
+	data := make([]byte, 8)
+	if err := p.ReadData(data, addr); err != nil {
+		return  0, err
+	}
+	return toUint64(data), nil
+}
+
+func (p *Process) parseInt8(addr uint64) (int8, error) {
+	data := make([]byte, 1)
+	if err := p.ReadData(data, addr); err != nil {
+		return  0, err
+	}
+	return toInt8(data), nil
+}
+
+func (p *Process) parseInt16(addr uint64) (int16, error) {
+	data := make([]byte, 2)
+	if err := p.ReadData(data, addr); err != nil {
+		return  0, err
+	}
+	return toInt16(data), nil
+}
+
+func (p *Process) parseInt32(addr uint64) (int32, error) {
+	data := make([]byte, 4)
+	if err := p.ReadData(data, addr); err != nil {
+		return  0, err
+	}
+	return toInt32(data), nil
+}
+
+func (p *Process) parseInt64(addr uint64) (int64, error) {
+	data := make([]byte, 8)
+	if err := p.ReadData(data, addr); err != nil {
+		return 0, err
+	}
+	return toInt64(data), nil
 }
 
 func (p *Process) parseStruct(addr uint64, binStrt *gbin.Strt, strter GoStructer) error {

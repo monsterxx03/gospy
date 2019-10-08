@@ -121,6 +121,22 @@ func main() {
 			},
 		},
 		{
+			Name: "var",
+			Usage: "dump variable",
+			Flags:   []cli.Flag{cli.StringFlag{Name: "name"}, binFlag, pidFlag, nonblockingFlag},
+			Action: func(c *cli.Context) error {
+				p, err := proc.New(pid, bin)
+				if err != nil {
+					return err
+				}
+				varName := c.String("name")
+				if err := p.DumpVar(varName, nonblocking); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+		{
 			Name:    "version",
 			Aliases: []string{"v"},
 			Usage:   "print build version",
