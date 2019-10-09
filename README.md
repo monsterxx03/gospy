@@ -114,7 +114,7 @@ binary will be created under gospy/bin/
 
 Read DWARF ino from ELF binary(embed by go compiler), parse some basic global variables'(runtime.allgs, runtime.allglen...) virtual memory address, then read target process's memory space to recreate runtime structs(runtime.g, runtime.p, runtime.m, runtime.sched...)
 
-### How to read remote process's memory space?
+#### How to read remote process's memory space?
 
 There're three ways:
 
@@ -125,17 +125,17 @@ There're three ways:
 gospy takes the third way(`/proc/{pid}/mem`). Bad side is sudo privilege is required.
 
 
-### Is there any overhead on remote process?
+#### Is there any overhead on remote process?
 
 Yes. By default, gospy use `PTRACE_ATTACH` to suspend target process to get a consistent memory view, after reading, `PTRACE_DEATCH` to resume target process.
 
-If `--non-blocking` option is provided, gospy will do memory reading directly, won't suspend target process.
+If `--non-blocking` option is provided, gospy will do memory reading directly, won't suspend target process. If target process is creating/destorying goroutines actively, it may fail during reading memory.
 
-### If target process's binary is striped, any workaround without restarting target process?
+#### If target process's binary is striped, any workaround without restarting target process?
 
-You can compile a binary with debug info and specify with  the `--bin` option. Ensure compile with same code revision, same go version.
+You can compile a binary with debug info and specify the `--bin` option. Ensure compile with same code revision, same go version.
 
-### Can gospy spy itself?
+#### Can gospy spy itself?
 
 Yes :)
 
