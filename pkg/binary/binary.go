@@ -158,7 +158,7 @@ func getEntryName(entry *dwarf.Entry) string {
 }
 
 func (b *Binary) DumpVar(name string) (Var, error) {
-	data , err := b.bin.DWARF()
+	data, err := b.bin.DWARF()
 	if err != nil {
 		return nil, err
 	}
@@ -205,6 +205,7 @@ func parseVarType(name string, addr uint64, t dwarf.Type) (Var, error) {
 		if strt.StructName == "string" {
 			return &StringVar{CommonType{Name: name, Addr: addr, Size: strt.Size()}}, nil
 		}
+		return nil, fmt.Errorf("unsupported struct type %s", t)
 	case *dwarf.UintType:
 		u := t.(*dwarf.UintType)
 		return &UintVar{CommonType{Name: name, Addr: addr, Size: u.Size()}}, nil
@@ -213,7 +214,7 @@ func parseVarType(name string, addr uint64, t dwarf.Type) (Var, error) {
 		return &IntVar{CommonType{Name: name, Addr: addr, Size: i.Size()}}, nil
 	case *dwarf.BoolType:
 		b := t.(*dwarf.BoolType)
-		return  &BoolVar{CommonType{Name: name, Addr: addr, Size: b.Size()}}, nil
+		return &BoolVar{CommonType{Name: name, Addr: addr, Size: b.Size()}}, nil
 	case *dwarf.PtrType:
 		_t := t.(*dwarf.PtrType).Type
 		nest_t, err := parseVarType(name, addr, t.(*dwarf.PtrType).Type)
@@ -221,13 +222,12 @@ func parseVarType(name string, addr uint64, t dwarf.Type) (Var, error) {
 			return nil, err
 		}
 		res := &PtrVar{
-			CommonType: CommonType{Name: name, Addr: addr,  Size: _t.Size()},
-			Type: nest_t}
+			CommonType: CommonType{Name: name, Addr: addr, Size: _t.Size()},
+			Type:       nest_t}
 		return res, nil
 	default:
 		return nil, fmt.Errorf("unknown type %s", t)
 	}
-	return nil, nil
 }
 
 func (b *Binary) Parse(units ...*unit) (map[string]interface{}, error) {
