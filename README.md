@@ -12,9 +12,9 @@ learned a lot from [delve](https://github.com/go-delve/delve)
 
 
     bin: /bin/prometheus, goVer: 1.12.8, gomaxprocs: 8
-    Sched: NMidle 9, NMspinning 0, NMfreed 0, NPidle 8, NGsys 20, Runqsize: 0 
+    Sched: NMidle 9, NMspinning 0, NMfreed 0, NPidle 8, NGsys 20, Runqsize: 0, uptime: 2h20m23s
     Heap: HeapInUse 16.70MB, HeapSys 62.78MB, HeapLive 14.49MB, HeapObjects 65076, Nmalloc 593803, Nfree 528731
-    GC: TotalPauseTime 3.28min, NumGC 27, NumForcedGC 0, GCCpu 0.000013
+    GC: TotalPauseTime 3.28412ms, NumGC 27, NumForcedGC 0, GCCpu 0.000013
     P0 idle schedtick: 5828 syscalltick: 3308 curM: nil runqsize: 71
     P1 idle schedtick: 4241 syscalltick: 3441 curM: nil runqsize: 67
     P2 idle schedtick: 1938 syscalltick: 2449 curM: nil runqsize: 47

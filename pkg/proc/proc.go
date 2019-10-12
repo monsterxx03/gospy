@@ -49,7 +49,6 @@ func (s PSummary) String() string {
 	}
 	pw.Flush()
 
-	uptime := time.Duration(nanotime() - s.RuntimeInitTime).Round(time.Second)
 	// TODO simplify and humanize
 	return fmt.Sprintf("bin: %s, goVer: %s, gomaxprocs: %d, uptime: %s \n"+
 		"Sched: NMidle %d, NMspinning %d, NMfreed %d, NPidle %d, NGsys %d, Runqsize: %d \n"+
@@ -58,10 +57,10 @@ func (s PSummary) String() string {
 		"%s"+
 		"Threads: %d total, %d running, %d sleeping, %d stopped, %d zombie\n"+
 		"Goroutines: %d total, %d idle, %d running, %d syscall, %d waiting\n",
-		s.BinPath, s.GoVersion, s.Gomaxprocs, uptime,
+		s.BinPath, s.GoVersion, s.Gomaxprocs, time.Duration(nanotime()-s.RuntimeInitTime).Round(time.Second),
 		s.Sched.Nmidle, s.Sched.Nmspinning, s.Sched.Nmfreed, s.Sched.Npidle, s.Sched.Ngsys, s.Sched.Runqsize,
 		humanateBytes(s.MemStat.HeapInuse), humanateBytes(s.MemStat.HeapSys), humanateBytes(s.MemStat.HeapLive), s.MemStat.HeapObjects, s.MemStat.Nmalloc, s.MemStat.Nfree,
-		humanateNS(s.MemStat.PauseTotalNs), s.MemStat.NumGC, s.MemStat.NumForcedGC, s.MemStat.GCCPUFraction,
+		time.Duration(s.MemStat.PauseTotalNs).Round(time.Nanosecond), s.MemStat.NumGC, s.MemStat.NumForcedGC, s.MemStat.GCCPUFraction,
 		b.String(),
 		s.ThreadsTotal, s.ThreadsRunning, s.ThreadsSleeping, s.ThreadsStopped, s.ThreadsZombie,
 		s.GTotal, s.GIdle, s.GRunning, s.GSyscall, s.GWaiting,
