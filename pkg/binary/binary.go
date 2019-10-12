@@ -44,6 +44,8 @@ type Binary struct {
 	funcCache map[uint64]*Location
 	SymTable  *gosym.Table
 
+	StrtMap map[string]*Strt // get strrt by name
+
 	// following fields are parsed from binary dwarf during starting
 	GoVerAddr           uint64 // parsed vma of runtime.buildVersion
 	RuntimeInitTimeAddr uint64 // parsed runtime.runtimeInitTime
@@ -53,6 +55,7 @@ type Binary struct {
 	GobufStruct         *Strt  // parsed runtime.gobuf struct
 	SchedtStruct        *Strt  // parsed runtime.schedt struct
 	MStatsStruct        *Strt  // parsed runtime.mstats struct
+	MSpanStruct         *Strt  // parsed runtime.mspan struct
 	MHeapStruct         *Strt  //parsed runtime.mheap struct
 	SchedAddr           uint64 // parsed vma of runtime.sched
 	AllglenAddr         uint64 // parsed vma of runtime.allglen
@@ -129,28 +132,40 @@ func (b *Binary) Initialize() error {
 		&unit{"runtime.mstats", UTYPE_STRUCT},
 		&unit{"runtime.memstats", UTYPE_VAR},
 		&unit{"runtime.runtimeInitTime", UTYPE_VAR},
+		&unit{"runtime.mspan", UTYPE_STRUCT},
 		&unit{"runtime.mheap", UTYPE_STRUCT},
 		&unit{"runtime.mheap_", UTYPE_VAR},
 	)
 	if err != nil {
 		return err
 	}
+	b.StrtMap = make(map[string]*Strt)
+
 	b.GStruct = result["runtime.g"].(*Strt)
+	b.StrtMap["runtime.g"] = b.GStruct
 	b.MStruct = result["runtime.m"].(*Strt)
+	b.StrtMap["runtime.m"] = b.MStruct
 	b.PStruct = result["runtime.p"].(*Strt)
+	b.StrtMap["runtime.p"] = b.PStruct
 	b.AllglenAddr = result["runtime.allglen"].(uint64)
 	b.SchedAddr = result["runtime.sched"].(uint64)
 	b.GobufStruct = result["runtime.gobuf"].(*Strt)
+	b.StrtMap["runtime.gobuf"] = b.GobufStruct
 	b.SchedtStruct = result["runtime.schedt"].(*Strt)
+	b.StrtMap["runtime.schedt"] = b.SchedtStruct
 	b.AllgsAddr = result["runtime.allgs"].(uint64)
 	b.AllpAddr = result["runtime.allp"].(uint64)
 	b.GoVerAddr = result["runtime.buildVersion"].(uint64)
 	b.GomaxprocsAddr = result["runtime.gomaxprocs"].(uint64)
 	b.MStatsStruct = result["runtime.mstats"].(*Strt)
+	b.StrtMap["runtime.mstats"] = b.MStatsStruct
 	b.MStatsAddr = result["runtime.memstats"].(uint64)
 	b.RuntimeInitTimeAddr = result["runtime.runtimeInitTime"].(uint64)
 	b.MHeapAddr = result["runtime.mheap_"].(uint64)
 	b.MHeapStruct = result["runtime.mheap"].(*Strt)
+	b.StrtMap["runtime.mheap"] = b.MHeapStruct
+	b.MSpanStruct = result["runtime.mspan"].(*Strt)
+	b.StrtMap["runtime.mspan"] = b.MSpanStruct
 	return nil
 }
 

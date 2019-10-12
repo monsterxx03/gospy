@@ -145,7 +145,8 @@ func (p *Process) DumpHeap(lock bool) error {
 		defer p.Detach()
 	}
 	h := new(MHeap)
-	if err := p.parseStruct(p.bin.MHeapAddr, p.bin.MHeapStruct, h); err != nil {
+	h.Init(p, p.bin.MHeapStruct)
+	if err := h.Parse(p.bin.MHeapAddr); err != nil {
 		return err
 	}
 	fmt.Printf("%+v\n", h)
@@ -349,11 +350,10 @@ func (p *Process) parseM(maddr uint64) (*M, error) {
 
 func (p *Process) parseP(paddr uint64) (*P, error) {
 	_p := new(P)
-	if err := p.parseStruct(paddr, p.bin.PStruct, _p); err != nil {
+	_p.Init(p, p.bin.PStruct)
+	if err := _p.Parse(paddr); err != nil {
 		return nil, err
 	}
-	strt := p.bin.PStruct
-
 	// parse P's local queue size
 	runqsize := 0
 	for i := 0; i < len(_p.Runq); i += POINTER_SIZE {
@@ -371,23 +371,14 @@ func (p *Process) parseP(paddr uint64) (*P, error) {
 	}
 	_p.Runqsize = runqsize
 
-	// parse P's  binding M
-	maddr, err := p.ReadVMA(strt.GetFieldAddr(paddr, "m"))
-	if err != nil {
-		return nil, err
-	}
-	m, err := p.parseM(maddr)
-	if err != nil {
-		return nil, err
-	}
-	_p.M = m
 	return _p, nil
 }
 
 func (p *Process) parseG(gaddr uint64) (*G, error) {
 	// TODO cache during same snapshot
 	g := new(G)
-	if err := p.parseStruct(gaddr, p.bin.GStruct, g); err != nil {
+	g.Init(p, p.bin.GStruct)
+	if err := g.Parse(gaddr); err != nil {
 		return nil, err
 	}
 	if g.Status == gdead {
@@ -404,13 +395,12 @@ func (p *Process) parseG(gaddr uint64) (*G, error) {
 	}
 	g.CurLoc = p.getLocation(pc)
 
-	m, err := p.parseM(g.MPtr)
-	if err != nil {
-		return nil, err
-	}
-	g.M = m
+	// m, err := p.parseM(g.MPtr)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// g.M = m
 
-	// g.CurLoc = g.Sche
 	g.GoLoc = p.getLocation(g.Gopc)
 	g.StartLoc = p.getLocation(g.Startpc)
 	return g, nil
@@ -448,7 +438,8 @@ func (p *Process) GoVersion() (string, error) {
 
 func (p *Process) SchedInfo() (*Sched, error) {
 	sched := new(Sched)
-	if err := p.parseStruct(p.bin.SchedAddr, p.bin.SchedtStruct, sched); err != nil {
+	sched.Init(p, p.bin.SchedtStruct)
+	if err := sched.Parse(p.bin.SchedAddr); err != nil {
 		return nil, err
 	}
 	return sched, nil
@@ -456,7 +447,8 @@ func (p *Process) SchedInfo() (*Sched, error) {
 
 func (p *Process) MemStat() (*MemStat, error) {
 	mem := new(MemStat)
-	if err := p.parseStruct(p.bin.MStatsAddr, p.bin.MStatsStruct, mem); err != nil {
+	mem.Init(p, p.bin.MStatsStruct)
+	if err := mem.Parse(p.bin.MStatsAddr); err != nil {
 		return nil, err
 	}
 	return mem, nil
@@ -557,17 +549,6 @@ func (p *Process) parseInt64(addr uint64) (int64, error) {
 		return 0, err
 	}
 	return toInt64(data), nil
-}
-
-func (p *Process) parseStruct(addr uint64, binStrt *gbin.Strt, strter GoStructer) error {
-	buf := make([]byte, binStrt.Size)
-	if err := p.ReadData(buf, addr); err != nil {
-		return err
-	}
-	if err := strter.Parse(binStrt, buf); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (p *Process) getLocation(addr uint64) *gbin.Location {

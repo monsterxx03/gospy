@@ -34,12 +34,40 @@ func (w gwaitReason) String() string {
 	return gwaitReasonStrings[w]
 }
 
-type GoStructer interface {
-	Parse(binStrt *gbin.Strt, data []byte) error
+type common struct {
+	_p       *Process
+	_binStrt *gbin.Strt
 }
 
-// parse will fill fields on `obj` from `data`, `binStrt` holds mapping info
-func parse(obj GoStructer, binStrt *gbin.Strt, data []byte) error {
+func (c *common) Init(p *Process, binStrt *gbin.Strt) {
+	c._p = p
+	c._binStrt = binStrt
+}
+
+func (c *common) Process() *Process {
+	return c._p
+}
+
+func (c *common) BinStrt() *gbin.Strt {
+	return c._binStrt
+}
+
+type GoStructer interface {
+	Init(p *Process, binStrt *gbin.Strt)
+	Parse(addr uint64) error
+	BinStrt() *gbin.Strt
+	Process() *Process
+}
+
+// parse will fill fields in `obj` by reading memory start from `baseAddr`
+// XX: reflect is disguesting, but ...
+func parse(baseAddr uint64, obj GoStructer) error {
+	p := obj.Process()
+	binStrt := obj.BinStrt()
+	data := make([]byte, binStrt.Size)
+	if err := p.ReadData(data, baseAddr); err != nil {
+		return err
+	}
 	members := binStrt.Members
 	t := reflect.TypeOf(obj).Elem()
 	v := reflect.ValueOf(obj).Elem()
@@ -52,6 +80,27 @@ func parse(obj GoStructer, binStrt *gbin.Strt, data []byte) error {
 			size := uint64(strtField.Size)
 			// fill obj's fields
 			switch field.Type.Kind() {
+			case reflect.Ptr:
+				_addr := toUint64(data[addr : addr+size])
+				if _addr == 0 {
+					continue
+				}
+				bname := field.Tag.Get("binStrt")
+				if bname == "" {
+					return fmt.Errorf("pointer field %+v don't have `binStrt` tag", field)
+				}
+				bstrt, ok := p.bin.StrtMap[bname]
+				if !ok {
+					return fmt.Errorf("can't find %s in p.bin", bname)
+				}
+				strt := reflect.New(v.Field(i).Type().Elem())
+				// call Init dynamically
+				strt.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(p), reflect.ValueOf(bstrt)})
+				// recursive parse to fillin  instance
+				if err := parse(_addr, strt.Interface().(GoStructer)); err != nil {
+					return err
+				}
+				v.Field(i).Set(strt)
 			case reflect.Uint64:
 				f := toUint64(data[addr : addr+size])
 				v.Field(i).SetUint(f)
@@ -68,14 +117,19 @@ func parse(obj GoStructer, binStrt *gbin.Strt, data []byte) error {
 				f := toFloat64(data[addr : addr+size])
 				v.Field(i).SetFloat(f)
 			case reflect.Slice:
+				if field.Type.Elem().Kind() == reflect.Uint8 {
+					v.Field(i).SetBytes(data[addr : addr+size])
+					continue
+				}
 				if size != 3*POINTER_SIZE {
-					// must be array + len + scap
+					// must be array + len + cap
 					return fmt.Errorf("invalid slice size %d", size)
 				}
-				// arry := toInt64(data[addr : addr+POINTER_SIZE])
-				sLen := int(toUint64(data[addr+POINTER_SIZE : addr+POINTER_SIZE*2]))
-				sCap := int(toUint64(data[addr+POINTER_SIZE*2 : addr+POINTER_SIZE*3]))
-				v.Field(i).Set(reflect.MakeSlice(reflect.SliceOf(field.Type.Elem()), sLen, sCap))
+				// arryAddr := toInt64(data[addr : addr+POINTER_SIZE])
+				slen := int(toUint64(data[addr+POINTER_SIZE : addr+POINTER_SIZE*2]))
+				scap := int(toUint64(data[addr+POINTER_SIZE*2 : addr+POINTER_SIZE*3]))
+				v.Field(i).Set(reflect.MakeSlice(reflect.SliceOf(field.Type.Elem()), slen, scap))
+				// TOOO parse slice element
 			default:
 				return fmt.Errorf("unknown type:%+v", field)
 			}
@@ -87,21 +141,22 @@ func parse(obj GoStructer, binStrt *gbin.Strt, data []byte) error {
 
 // G is runtime.g struct parsed from process memory and binary dwarf
 type G struct {
-	ID         uint64         `name:"goid"`         // goid
-	Status     gstatus        `name:"atomicstatus"` // atomicstatus
-	WaitReason gwaitReason    `name:"waitreason"`   // if Status ==Gwaiting
-	Startpc    uint64         `name:"startpc"`
-	Gopc       uint64         `name:"gopc"`
-	MPtr       uint64         `name:"m"`
-	M          *M             // hold worker thread info
-	CurLoc     *gbin.Location // runtime location
-	UserLoc    *gbin.Location // location of user code, a subset of CurLoc
-	GoLoc      *gbin.Location // location of `go` statement that spawed this goroutine
-	StartLoc   *gbin.Location // location of goroutine start function
+	common
+	ID         uint64      `name:"goid"`         // goid
+	Status     gstatus     `name:"atomicstatus"` // atomicstatus
+	WaitReason gwaitReason `name:"waitreason"`   // if Status ==Gwaiting
+	Startpc    uint64      `name:"startpc"`
+	Gopc       uint64      `name:"gopc"`
+	// MPtr       uint64         `name:"m"`
+	M        *M             `name:"m" binStrt:"runtime.m"` // hold worker thread info
+	CurLoc   *gbin.Location // runtime location
+	UserLoc  *gbin.Location // location of user code, a subset of CurLoc
+	GoLoc    *gbin.Location // location of `go` statement that spawed this goroutine
+	StartLoc *gbin.Location // location of goroutine start function
 }
 
-func (g *G) Parse(binStrt *gbin.Strt, data []byte) error {
-	return parse(g, binStrt, data)
+func (g *G) Parse(addr uint64) error {
+	return parse(addr, g)
 }
 
 func (g *G) GetLocation(pcType string) *gbin.Location {
@@ -149,12 +204,18 @@ func (g *G) ThreadID() uint64 {
 
 // M is runtime.m struct
 type M struct {
-	ID     uint64
-	ProcID uint64
+	common
+	ID     uint64 `name:"id"`
+	ProcID uint64 `name:"procid"`
+}
+
+func (m *M) Parse(addr uint64) error {
+	return parse(addr, m)
 }
 
 // P (processor) is runtime.p struct
 type P struct {
+	common
 	ID          int32   `name:"id"`
 	Status      pstatus `name:"status"`
 	Schedtick   uint32  `name:"schedtick"`
@@ -164,8 +225,8 @@ type P struct {
 	Runqsize    int
 }
 
-func (p *P) Parse(binStrt *gbin.Strt, data []byte) error {
-	return parse(p, binStrt, data)
+func (p *P) Parse(addr uint64) error {
+	return parse(addr, p)
 }
 
 func (p *P) Idle() bool {
@@ -190,6 +251,7 @@ func (p *P) Dead() bool {
 
 // Sched is the global goroutine scheduler
 type Sched struct {
+	common
 	Nmidle     int32  `name:"nmidle"` // number of idle m's waiting for work
 	Nmspinning uint32 `name:"nmspinning"`
 	Nmfreed    uint64 `name:"nmfreed"`  // cumulative number of freed m's
@@ -198,12 +260,13 @@ type Sched struct {
 	Runqsize   int32  `name:"runqsize"` // global runnable queue size
 }
 
-func (s *Sched) Parse(binStrt *gbin.Strt, data []byte) error {
-	return parse(s, binStrt, data)
+func (s *Sched) Parse(addr uint64) error {
+	return parse(addr, s)
 }
 
 // MemStat hold memory usage and gc info (runtime/mstat.go)
 type MemStat struct {
+	common
 	HeapInuse   uint64 `name:"heap_inuse"`   // bytes allocated and not yet freed
 	HeapObjects uint64 `name:"heap_objects"` // total number of allocated objects
 	HeapSys     uint64 `name:"heap_sys"`     // virtual address space obtained from system for GC'd heap
@@ -220,26 +283,28 @@ type MemStat struct {
 	GCCPUFraction float64 `name:"gc_cpu_fraction"` // fraction of CPU time used by GC
 }
 
-func (m *MemStat) Parse(binStrt *gbin.Strt, data []byte) error {
-	return parse(m, binStrt, data)
+func (m *MemStat) Parse(addr uint64) error {
+	return parse(addr, m)
 }
 
 type MSpan struct {
+	common
 	Npages uint64 `name:"npages"`
 }
 
-func (s *MSpan) Parse(binStrt *gbin.Strt, data []byte) error {
-	return parse(s, binStrt, data)
+func (s *MSpan) Parse(addr uint64) error {
+	return parse(addr, s)
 }
 
 // MHeap hold process heap info (runtime/mheap.go:mheap)
 type MHeap struct {
+	common
 	Sweepgen   uint32   `name:"sweepgen"` // used to compare with mspan.sweepgen
-	MSpan      []*MSpan `name:"allspans"`
+	MSpan      []*MSpan `name:"allspans" binStrt:"runtime.mspan"`
 	PagesInUse uint64   `name:"pagesInUse"` // pages of spans in stats mSpanInUse
 	PagesSwept uint64   `name:"pagesSwept"` // pages swept this cycle
 }
 
-func (h *MHeap) Parse(binStrt *gbin.Strt, data []byte) error {
-	return parse(h, binStrt, data)
+func (h *MHeap) Parse(addr uint64) error {
+	return parse(addr, h)
 }
