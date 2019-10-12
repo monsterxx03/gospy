@@ -37,6 +37,18 @@ type PSummary struct {
 	Gomaxprocs      int
 }
 
+func (s *PSummary) Uptime() time.Duration {
+	return time.Duration(nanotime() - s.RuntimeInitTime).Round(time.Second)
+}
+
+func (s *PSummary) TotalPauseTime() time.Duration {
+	return time.Duration(s.MemStat.PauseTotalNs).Round(time.Nanosecond)
+}
+
+func (s *PSummary) LastGC() time.Duration {
+	return time.Duration(time.Now().UnixNano() - int64(s.MemStat.LastGC)).Round(time.Millisecond)
+}
+
 func (s PSummary) String() string {
 	var b bytes.Buffer
 	pw := tabwriter.NewWriter(&b, 0, 0, 1, ' ', 0)
@@ -53,14 +65,14 @@ func (s PSummary) String() string {
 	return fmt.Sprintf("bin: %s, goVer: %s, gomaxprocs: %d, uptime: %s \n"+
 		"Sched: NMidle %d, NMspinning %d, NMfreed %d, NPidle %d, NGsys %d, Runqsize: %d \n"+
 		"Heap: HeapInUse %s, HeapSys %s, HeapLive %s, HeapObjects %d, Nmalloc %d, Nfree %d\n"+
-		"GC: TotalPauseTime %s, NumGC %d, NumForcedGC %d, GCCpu %f\n"+
+		"GC: TotalPauseTime %s, NumGC %d, NumForcedGC %d, GCCpu %f, LastGC: %s ago\n"+
 		"%s"+
 		"Threads: %d total, %d running, %d sleeping, %d stopped, %d zombie\n"+
 		"Goroutines: %d total, %d idle, %d running, %d syscall, %d waiting\n",
-		s.BinPath, s.GoVersion, s.Gomaxprocs, time.Duration(nanotime()-s.RuntimeInitTime).Round(time.Second),
+		s.BinPath, s.GoVersion, s.Gomaxprocs, s.Uptime(),
 		s.Sched.Nmidle, s.Sched.Nmspinning, s.Sched.Nmfreed, s.Sched.Npidle, s.Sched.Ngsys, s.Sched.Runqsize,
 		humanateBytes(s.MemStat.HeapInuse), humanateBytes(s.MemStat.HeapSys), humanateBytes(s.MemStat.HeapLive), s.MemStat.HeapObjects, s.MemStat.Nmalloc, s.MemStat.Nfree,
-		time.Duration(s.MemStat.PauseTotalNs).Round(time.Nanosecond), s.MemStat.NumGC, s.MemStat.NumForcedGC, s.MemStat.GCCPUFraction,
+		s.TotalPauseTime(), s.MemStat.NumGC, s.MemStat.NumForcedGC, s.MemStat.GCCPUFraction, s.LastGC(),
 		b.String(),
 		s.ThreadsTotal, s.ThreadsRunning, s.ThreadsSleeping, s.ThreadsStopped, s.ThreadsZombie,
 		s.GTotal, s.GIdle, s.GRunning, s.GSyscall, s.GWaiting,

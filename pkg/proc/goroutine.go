@@ -209,6 +209,7 @@ type MemStat struct {
 	PauseTotalNs  uint64  `name:"pause_total_ns"`
 	NumGC         uint32  `name:"numgc"`
 	NumForcedGC   uint32  `name:"numforcedgc"`     // number of user-forced GCs
+	LastGC        uint64  `name:"last_gc_unix"`    // last gc (in unix time)
 	GCCPUFraction float64 `name:"gc_cpu_fraction"` // fraction of CPU time used by GC
 }
 

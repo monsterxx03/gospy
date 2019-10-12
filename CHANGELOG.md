@@ -1,7 +1,9 @@
 ## 0.3.0(next)
 
 - Add `go var` command to dump a runtime global variable
+- Fix GC: TotalPauseTime
 - Dump target process's uptime
+- Dump target process's last gc time
 
 ## 0.2.0
 
