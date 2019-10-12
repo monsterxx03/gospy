@@ -75,7 +75,7 @@ func parse(obj GoStructer, binStrt *gbin.Strt, data []byte) error {
 				// arry := toInt64(data[addr : addr+POINTER_SIZE])
 				sLen := int(toUint64(data[addr+POINTER_SIZE : addr+POINTER_SIZE*2]))
 				sCap := int(toUint64(data[addr+POINTER_SIZE*2 : addr+POINTER_SIZE*3]))
-				v.Field(i).Set(reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(&MSpan{})), sLen, sCap))
+				v.Field(i).Set(reflect.MakeSlice(reflect.SliceOf(field.Type.Elem()), sLen, sCap))
 			default:
 				return fmt.Errorf("unknown type:%+v", field)
 			}
