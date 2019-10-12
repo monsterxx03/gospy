@@ -121,9 +121,9 @@ func main() {
 			},
 		},
 		{
-			Name: "var",
+			Name:  "var",
 			Usage: "dump variable",
-			Flags:   []cli.Flag{cli.StringFlag{Name: "name", Required: true}, binFlag, pidFlag, nonblockingFlag},
+			Flags: []cli.Flag{cli.StringFlag{Name: "name", Required: true}, binFlag, pidFlag, nonblockingFlag},
 			Action: func(c *cli.Context) error {
 				p, err := proc.New(pid, bin)
 				if err != nil {
@@ -131,6 +131,21 @@ func main() {
 				}
 				varName := c.String("name")
 				if err := p.DumpVar(varName, nonblocking); err != nil {
+					return err
+				}
+				return nil
+			},
+		},
+		{
+			Name:  "heap",
+			Usage: "dump heap",
+			Flags: []cli.Flag{binFlag, pidFlag, nonblockingFlag},
+			Action: func(c *cli.Context) error {
+				p, err := proc.New(pid, bin)
+				if err != nil {
+					return err
+				}
+				if err := p.DumpHeap(nonblocking); err != nil {
 					return err
 				}
 				return nil

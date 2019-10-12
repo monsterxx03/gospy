@@ -53,12 +53,14 @@ type Binary struct {
 	GobufStruct         *Strt  // parsed runtime.gobuf struct
 	SchedtStruct        *Strt  // parsed runtime.schedt struct
 	MStatsStruct        *Strt  // parsed runtime.mstats struct
+	MHeapStruct         *Strt  //parsed runtime.mheap struct
 	SchedAddr           uint64 // parsed vma of runtime.sched
 	AllglenAddr         uint64 // parsed vma of runtime.allglen
 	AllgsAddr           uint64 // parsed vma of runtime.allgs
 	AllpAddr            uint64 // parsed vma of runtime.allp
 	GomaxprocsAddr      uint64 // parsed vma of runtime.gomaxprocs
 	MStatsAddr          uint64 // parsed vma of runtime.memstats
+	MHeapAddr           uint64 // parsed vma of runtime.mheap_
 }
 
 // Strt is a abstruct struct parsed from dwarf info
@@ -127,6 +129,8 @@ func (b *Binary) Initialize() error {
 		&unit{"runtime.mstats", UTYPE_STRUCT},
 		&unit{"runtime.memstats", UTYPE_VAR},
 		&unit{"runtime.runtimeInitTime", UTYPE_VAR},
+		&unit{"runtime.mheap", UTYPE_STRUCT},
+		&unit{"runtime.mheap_", UTYPE_VAR},
 	)
 	if err != nil {
 		return err
@@ -145,6 +149,8 @@ func (b *Binary) Initialize() error {
 	b.MStatsStruct = result["runtime.mstats"].(*Strt)
 	b.MStatsAddr = result["runtime.memstats"].(uint64)
 	b.RuntimeInitTimeAddr = result["runtime.runtimeInitTime"].(uint64)
+	b.MHeapAddr = result["runtime.mheap_"].(uint64)
+	b.MHeapStruct = result["runtime.mheap"].(*Strt)
 	return nil
 }
 

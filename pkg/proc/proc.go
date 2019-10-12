@@ -137,6 +137,21 @@ func (p *Process) DumpVar(name string, lock bool) error {
 	return nil
 }
 
+func (p *Process) DumpHeap(lock bool) error {
+	if lock {
+		if err := p.Attach(); err != nil {
+			return err
+		}
+		defer p.Detach()
+	}
+	h := new(MHeap)
+	if err := p.parseStruct(p.bin.MHeapAddr, p.bin.MHeapStruct, h); err != nil {
+		return err
+	}
+	fmt.Printf("%+v\n", h)
+	return nil
+}
+
 func (p *Process) parseVar(v gbin.Var, addr uint64) (gbin.Var, error) {
 	switch v.(type) {
 	case *gbin.StringVar:

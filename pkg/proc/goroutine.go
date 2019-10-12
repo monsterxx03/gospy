@@ -68,7 +68,14 @@ func parse(obj GoStructer, binStrt *gbin.Strt, data []byte) error {
 				f := toFloat64(data[addr : addr+size])
 				v.Field(i).SetFloat(f)
 			case reflect.Slice:
-				v.Field(i).SetBytes(data[addr : addr+size])
+				if size != 3*POINTER_SIZE {
+					// must be array + len + scap
+					return fmt.Errorf("invalid slice size %d", size)
+				}
+				// arry := toInt64(data[addr : addr+POINTER_SIZE])
+				sLen := int(toUint64(data[addr+POINTER_SIZE : addr+POINTER_SIZE*2]))
+				sCap := int(toUint64(data[addr+POINTER_SIZE*2 : addr+POINTER_SIZE*3]))
+				v.Field(i).Set(reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(&MSpan{})), sLen, sCap))
 			default:
 				return fmt.Errorf("unknown type:%+v", field)
 			}
@@ -215,4 +222,24 @@ type MemStat struct {
 
 func (m *MemStat) Parse(binStrt *gbin.Strt, data []byte) error {
 	return parse(m, binStrt, data)
+}
+
+type MSpan struct {
+	Npages uint64 `name:"npages"`
+}
+
+func (s *MSpan) Parse(binStrt *gbin.Strt, data []byte) error {
+	return parse(s, binStrt, data)
+}
+
+// MHeap hold process heap info (runtime/mheap.go:mheap)
+type MHeap struct {
+	Sweepgen   uint32   `name:"sweepgen"` // used to compare with mspan.sweepgen
+	MSpan      []*MSpan `name:"allspans"`
+	PagesInUse uint64   `name:"pagesInUse"` // pages of spans in stats mSpanInUse
+	PagesSwept uint64   `name:"pagesSwept"` // pages swept this cycle
+}
+
+func (h *MHeap) Parse(binStrt *gbin.Strt, data []byte) error {
+	return parse(h, binStrt, data)
 }
