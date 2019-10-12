@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"sync"
 	"text/tabwriter"
+	"time"
 
 	"github.com/golang/glog"
 	gbin "gospy/pkg/binary"
@@ -17,6 +18,7 @@ import (
 // PSummary holds process summary info
 type PSummary struct {
 	BinPath         string
+	RuntimeInitTime int64
 	Gs              []*G
 	Ps              []*P
 	Sched           *Sched
@@ -46,15 +48,17 @@ func (s PSummary) String() string {
 		fmt.Fprintf(pw, "P%d %s\tschedtick: %d\tsyscalltick: %d\tcurM: %s\trunqsize: %d\n", p.ID, p.Status.String(), p.Schedtick, p.Syscalltick, minfo, p.Runqsize)
 	}
 	pw.Flush()
+
+	uptime := time.Duration(nanotime() - s.RuntimeInitTime).Round(time.Second)
 	// TODO simplify and humanize
-	return fmt.Sprintf("bin: %s, goVer: %s, gomaxprocs: %d\n"+
+	return fmt.Sprintf("bin: %s, goVer: %s, gomaxprocs: %d, uptime: %s \n"+
 		"Sched: NMidle %d, NMspinning %d, NMfreed %d, NPidle %d, NGsys %d, Runqsize: %d \n"+
 		"Heap: HeapInUse %s, HeapSys %s, HeapLive %s, HeapObjects %d, Nmalloc %d, Nfree %d\n"+
 		"GC: TotalPauseTime %s, NumGC %d, NumForcedGC %d, GCCpu %f\n"+
 		"%s"+
 		"Threads: %d total, %d running, %d sleeping, %d stopped, %d zombie\n"+
 		"Goroutines: %d total, %d idle, %d running, %d syscall, %d waiting\n",
-		s.BinPath, s.GoVersion, s.Gomaxprocs,
+		s.BinPath, s.GoVersion, s.Gomaxprocs, uptime,
 		s.Sched.Nmidle, s.Sched.Nmspinning, s.Sched.Nmfreed, s.Sched.Npidle, s.Sched.Ngsys, s.Sched.Runqsize,
 		humanateBytes(s.MemStat.HeapInuse), humanateBytes(s.MemStat.HeapSys), humanateBytes(s.MemStat.HeapLive), s.MemStat.HeapObjects, s.MemStat.Nmalloc, s.MemStat.Nfree,
 		humanateNS(s.MemStat.PauseTotalNs), s.MemStat.NumGC, s.MemStat.NumForcedGC, s.MemStat.GCCPUFraction,
@@ -122,7 +126,7 @@ func (p *Process) DumpVar(name string, lock bool) error {
 	return nil
 }
 
-func (p *Process) parseVar(v gbin.Var, addr uint64) (gbin.Var ,error) {
+func (p *Process) parseVar(v gbin.Var, addr uint64) (gbin.Var, error) {
 	switch v.(type) {
 	case *gbin.StringVar:
 		strV := v.(*gbin.StringVar)
@@ -432,6 +436,14 @@ func (p *Process) MemStat() (*MemStat, error) {
 	return mem, nil
 }
 
+func (p *Process) RuntimeInitTime() (int64, error) {
+	t, err := p.parseInt64(p.bin.RuntimeInitTimeAddr)
+	if err != nil {
+		return 0, err
+	}
+	return t, nil
+}
+
 func (p *Process) parseString(addr uint64) (string, error) {
 	// go string is dataPtr(8 bytes) + len(8 bytes), we can parse string
 	// struct from binary with t.bin().Parse, but since its
@@ -461,7 +473,7 @@ func (p *Process) parseBool(addr uint64) (bool, error) {
 func (p *Process) parseUint8(addr uint64) (uint8, error) {
 	data := make([]byte, 1)
 	if err := p.ReadData(data, addr); err != nil {
-		return  0, err
+		return 0, err
 	}
 	return toUint8(data), nil
 }
@@ -469,7 +481,7 @@ func (p *Process) parseUint8(addr uint64) (uint8, error) {
 func (p *Process) parseUint16(addr uint64) (uint16, error) {
 	data := make([]byte, 2)
 	if err := p.ReadData(data, addr); err != nil {
-		return  0, err
+		return 0, err
 	}
 	return toUint16(data), nil
 }
@@ -477,14 +489,14 @@ func (p *Process) parseUint16(addr uint64) (uint16, error) {
 func (p *Process) parseUint32(addr uint64) (uint32, error) {
 	data := make([]byte, 4)
 	if err := p.ReadData(data, addr); err != nil {
-		return  0, err
+		return 0, err
 	}
 	return toUint32(data), nil
 }
 func (p *Process) parseUint64(addr uint64) (uint64, error) {
 	data := make([]byte, 8)
 	if err := p.ReadData(data, addr); err != nil {
-		return  0, err
+		return 0, err
 	}
 	return toUint64(data), nil
 }
@@ -492,7 +504,7 @@ func (p *Process) parseUint64(addr uint64) (uint64, error) {
 func (p *Process) parseInt8(addr uint64) (int8, error) {
 	data := make([]byte, 1)
 	if err := p.ReadData(data, addr); err != nil {
-		return  0, err
+		return 0, err
 	}
 	return toInt8(data), nil
 }
@@ -500,7 +512,7 @@ func (p *Process) parseInt8(addr uint64) (int8, error) {
 func (p *Process) parseInt16(addr uint64) (int16, error) {
 	data := make([]byte, 2)
 	if err := p.ReadData(data, addr); err != nil {
-		return  0, err
+		return 0, err
 	}
 	return toInt16(data), nil
 }
@@ -508,7 +520,7 @@ func (p *Process) parseInt16(addr uint64) (int16, error) {
 func (p *Process) parseInt32(addr uint64) (int32, error) {
 	data := make([]byte, 4)
 	if err := p.ReadData(data, addr); err != nil {
-		return  0, err
+		return 0, err
 	}
 	return toInt32(data), nil
 }
@@ -582,6 +594,10 @@ func (p *Process) Summary(lock bool) (*PSummary, error) {
 		defer p.Detach()
 	}
 
+	initTime, err := p.RuntimeInitTime()
+	if err != nil {
+		return nil, err
+	}
 	goVer, err := p.GoVersion()
 	if err != nil {
 		return nil, err
@@ -635,7 +651,7 @@ func (p *Process) Summary(lock bool) (*PSummary, error) {
 		return nil, err
 	}
 
-	sum := &PSummary{BinPath: p.bin.Path, Gs: gs, Ps: ps, ThreadsTotal: len(p.threads), Sched: sched, MemStat: memstat,
+	sum := &PSummary{BinPath: p.bin.Path, RuntimeInitTime: initTime, Gs: gs, Ps: ps, ThreadsTotal: len(p.threads), Sched: sched, MemStat: memstat,
 		ThreadsRunning: trunning, ThreadsSleeping: tsleeping, ThreadsStopped: tstopped, ThreadsZombie: tzombie,
 		GTotal: len(gs), GIdle: gidle, GRunning: grunning, GSyscall: gsyscall, GWaiting: gwaiting,
 		GoVersion: goVer, Gomaxprocs: gomaxprocs}

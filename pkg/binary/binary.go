@@ -45,19 +45,20 @@ type Binary struct {
 	SymTable  *gosym.Table
 
 	// following fields are parsed from binary dwarf during starting
-	GoVerAddr      uint64 // parsed vma of runtime.buildVersion
-	GStruct        *Strt  // parsed runtime.g struct
-	MStruct        *Strt  // parsed runtime.m struct
-	PStruct        *Strt  // parsed runtime.p struct
-	GobufStruct    *Strt  // parsed runtime.gobuf struct
-	SchedtStruct   *Strt  // parsed runtime.schedt struct
-	MStatsStruct   *Strt  // parsed runtime.mstats struct
-	SchedAddr      uint64 // parsed vma of runtime.sched
-	AllglenAddr    uint64 // parsed vma of runtime.allglen
-	AllgsAddr      uint64 // parsed vma of runtime.allgs
-	AllpAddr       uint64 // parsed vma of runtime.allp
-	GomaxprocsAddr uint64 // parsed vma of runtime.gomaxprocs
-	MStatsAddr     uint64 // parsed vma of runtime.memstats
+	GoVerAddr           uint64 // parsed vma of runtime.buildVersion
+	RuntimeInitTimeAddr uint64 // parsed runtime.runtimeInitTime
+	GStruct             *Strt  // parsed runtime.g struct
+	MStruct             *Strt  // parsed runtime.m struct
+	PStruct             *Strt  // parsed runtime.p struct
+	GobufStruct         *Strt  // parsed runtime.gobuf struct
+	SchedtStruct        *Strt  // parsed runtime.schedt struct
+	MStatsStruct        *Strt  // parsed runtime.mstats struct
+	SchedAddr           uint64 // parsed vma of runtime.sched
+	AllglenAddr         uint64 // parsed vma of runtime.allglen
+	AllgsAddr           uint64 // parsed vma of runtime.allgs
+	AllpAddr            uint64 // parsed vma of runtime.allp
+	GomaxprocsAddr      uint64 // parsed vma of runtime.gomaxprocs
+	MStatsAddr          uint64 // parsed vma of runtime.memstats
 }
 
 // Strt is a abstruct struct parsed from dwarf info
@@ -125,6 +126,7 @@ func (b *Binary) Initialize() error {
 		&unit{"runtime.gomaxprocs", UTYPE_VAR},
 		&unit{"runtime.mstats", UTYPE_STRUCT},
 		&unit{"runtime.memstats", UTYPE_VAR},
+		&unit{"runtime.runtimeInitTime", UTYPE_VAR},
 	)
 	if err != nil {
 		return err
@@ -142,6 +144,7 @@ func (b *Binary) Initialize() error {
 	b.GomaxprocsAddr = result["runtime.gomaxprocs"].(uint64)
 	b.MStatsStruct = result["runtime.mstats"].(*Strt)
 	b.MStatsAddr = result["runtime.memstats"].(uint64)
+	b.RuntimeInitTimeAddr = result["runtime.runtimeInitTime"].(uint64)
 	return nil
 }
 
