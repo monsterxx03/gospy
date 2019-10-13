@@ -125,3 +125,17 @@ var threadStateStrings = map[string]string{
 	"W": "Waking",
 	"P": "Parked",
 }
+
+const (
+	mspanDead = iota
+	mspanInUse
+	mspanManual
+	mspanFree
+)
+
+var mspanStateStrings = [...]string{
+	mspanDead:   "dead",
+	mspanInUse:  "inuse",
+	mspanManual: "manual",
+	mspanFree:   "free",
+}

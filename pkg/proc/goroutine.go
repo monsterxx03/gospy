@@ -34,6 +34,15 @@ func (w gwaitReason) String() string {
 	return gwaitReasonStrings[w]
 }
 
+type mspanstate uint8
+
+func (s mspanstate) String() string {
+	if s < 0 || s >= mspanstate(len(mspanStateStrings)) {
+		return fmt.Sprintf("unknown mspan state %d", s)
+	}
+	return mspanStateStrings[s]
+}
+
 type common struct {
 	_p       *Process
 	_binStrt *gbin.Strt
@@ -107,6 +116,9 @@ func parse(baseAddr uint64, obj GoStructer) error {
 			case reflect.Uint32:
 				f := toUint32(data[addr : addr+size])
 				v.Field(i).SetUint(uint64(f))
+			case reflect.Uint16:
+				f := toUint16(data[addr : addr+size])
+				v.Field(i).SetUint(uint64(f))
 			case reflect.Uint8:
 				f := uint8(data[addr])
 				v.Field(i).SetUint(uint64(f))
@@ -117,19 +129,49 @@ func parse(baseAddr uint64, obj GoStructer) error {
 				f := toFloat64(data[addr : addr+size])
 				v.Field(i).SetFloat(f)
 			case reflect.Slice:
-				if field.Type.Elem().Kind() == reflect.Uint8 {
+				// check on slice item type
+				switch field.Type.Elem().Kind() {
+				case reflect.Uint8:
 					v.Field(i).SetBytes(data[addr : addr+size])
 					continue
+				case reflect.Ptr:
+					if size != POINTER_SIZE*3 {
+						// arrayptr + len + cap
+						return fmt.Errorf("Invalid size %d for slice of pointer", size)
+					}
+					arrayptr := toUint64(data[addr : addr+POINTER_SIZE])
+					slen := toUint64(data[addr+POINTER_SIZE : addr+POINTER_SIZE*2])
+					scap := toUint64(data[addr+POINTER_SIZE*2 : addr+POINTER_SIZE*3])
+					slice := reflect.MakeSlice(reflect.SliceOf(field.Type.Elem()), 0, int(scap))
+					bname := field.Tag.Get("binStrt")
+					if bname == "" {
+						return fmt.Errorf("slice field %+v don't have `binStrt` tag", field)
+					}
+					bstrt, ok := p.bin.StrtMap[bname]
+					if !ok {
+						return fmt.Errorf("can't find %s in p.bin", bname)
+					}
+					sliceData := make([]byte, slen*POINTER_SIZE)
+					// bulk read array data on arrayptr
+					if err := p.ReadData(sliceData, arrayptr); err != nil {
+						return err
+					}
+					for j := uint64(0); j < slen; j++ {
+						// rebuild slice items
+						strt := reflect.New(field.Type.Elem().Elem())
+						// call Init dynamically
+						strt.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(p), reflect.ValueOf(bstrt)})
+						idx := j * POINTER_SIZE
+						if err := parse(toUint64(sliceData[idx:idx+POINTER_SIZE]), strt.Interface().(GoStructer)); err != nil {
+							return err
+						}
+						slice = reflect.Append(slice, strt)
+					}
+					v.Field(i).Set(slice)
+					continue
+				default:
+					return fmt.Errorf("Unsupport slice item %+v", field)
 				}
-				if size != 3*POINTER_SIZE {
-					// must be array + len + cap
-					return fmt.Errorf("invalid slice size %d", size)
-				}
-				// arryAddr := toInt64(data[addr : addr+POINTER_SIZE])
-				slen := int(toUint64(data[addr+POINTER_SIZE : addr+POINTER_SIZE*2]))
-				scap := int(toUint64(data[addr+POINTER_SIZE*2 : addr+POINTER_SIZE*3]))
-				v.Field(i).Set(reflect.MakeSlice(reflect.SliceOf(field.Type.Elem()), slen, scap))
-				// TOOO parse slice element
 			default:
 				return fmt.Errorf("unknown type:%+v", field)
 			}
@@ -142,17 +184,16 @@ func parse(baseAddr uint64, obj GoStructer) error {
 // G is runtime.g struct parsed from process memory and binary dwarf
 type G struct {
 	common
-	ID         uint64      `name:"goid"`         // goid
-	Status     gstatus     `name:"atomicstatus"` // atomicstatus
-	WaitReason gwaitReason `name:"waitreason"`   // if Status ==Gwaiting
-	Startpc    uint64      `name:"startpc"`
-	Gopc       uint64      `name:"gopc"`
-	// MPtr       uint64         `name:"m"`
-	M        *M             `name:"m" binStrt:"runtime.m"` // hold worker thread info
-	CurLoc   *gbin.Location // runtime location
-	UserLoc  *gbin.Location // location of user code, a subset of CurLoc
-	GoLoc    *gbin.Location // location of `go` statement that spawed this goroutine
-	StartLoc *gbin.Location // location of goroutine start function
+	ID         uint64         `name:"goid"`         // goid
+	Status     gstatus        `name:"atomicstatus"` // atomicstatus
+	WaitReason gwaitReason    `name:"waitreason"`   // if Status ==Gwaiting
+	Startpc    uint64         `name:"startpc"`
+	Gopc       uint64         `name:"gopc"`
+	M          *M             `name:"m" binStrt:"runtime.m"` // hold worker thread info
+	CurLoc     *gbin.Location // runtime location
+	UserLoc    *gbin.Location // location of user code, a subset of CurLoc
+	GoLoc      *gbin.Location // location of `go` statement that spawed this goroutine
+	StartLoc   *gbin.Location // location of goroutine start function
 }
 
 func (g *G) Parse(addr uint64) error {
@@ -220,8 +261,8 @@ type P struct {
 	Status      pstatus `name:"status"`
 	Schedtick   uint32  `name:"schedtick"`
 	Syscalltick uint32  `name:"syscalltick"`
-	M           *M
-	Runq        []byte `name:"runq"` // must be public to by parsed in reflect
+	M           *M      `name:"m" binStrt:"runtime.m"`
+	Runq        []byte  `name:"runq"` // must be public to by parsed in reflect
 	Runqsize    int
 }
 
@@ -289,7 +330,10 @@ func (m *MemStat) Parse(addr uint64) error {
 
 type MSpan struct {
 	common
-	Npages uint64 `name:"npages"`
+	Npages     uint64     `name:"npages"`
+	Sweepgen   uint32     `name:"sweepgen"`
+	AllocCount uint16     `name:"allocCount"`
+	State      mspanstate `name:"state"`
 }
 
 func (s *MSpan) Parse(addr uint64) error {
@@ -300,7 +344,7 @@ func (s *MSpan) Parse(addr uint64) error {
 type MHeap struct {
 	common
 	Sweepgen   uint32   `name:"sweepgen"` // used to compare with mspan.sweepgen
-	MSpan      []*MSpan `name:"allspans" binStrt:"runtime.mspan"`
+	MSpans     []*MSpan `name:"allspans" binStrt:"runtime.mspan"`
 	PagesInUse uint64   `name:"pagesInUse"` // pages of spans in stats mSpanInUse
 	PagesSwept uint64   `name:"pagesSwept"` // pages swept this cycle
 }

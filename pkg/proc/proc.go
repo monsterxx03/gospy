@@ -149,7 +149,9 @@ func (p *Process) DumpHeap(lock bool) error {
 	if err := h.Parse(p.bin.MHeapAddr); err != nil {
 		return err
 	}
-	fmt.Printf("%+v\n", h)
+	for _, m := range h.MSpans {
+		fmt.Printf("%+v\n", m)
+	}
 	return nil
 }
 
@@ -328,26 +330,6 @@ func (p *Process) GetGs(lock bool) ([]*G, error) {
 	return result, nil
 }
 
-func (p *Process) parseM(maddr uint64) (*M, error) {
-	if maddr == 0 {
-		return nil, nil
-	}
-	strt := p.bin.MStruct
-	buf := make([]byte, POINTER_SIZE)
-	if err := p.ReadData(buf, strt.GetFieldAddr(maddr, "id")); err != nil {
-		return nil, err
-	}
-	id := toUint64(buf)
-
-	// m.procid is thread id:
-	// https://github.com/golang/go/blob/release-branch.go1.13/src/runtime/os_linux.go#L336
-	if err := p.ReadData(buf, strt.GetFieldAddr(maddr, "procid")); err != nil {
-		return nil, err
-	}
-	procid := toUint64(buf)
-	return &M{ID: id, ProcID: procid}, nil
-}
-
 func (p *Process) parseP(paddr uint64) (*P, error) {
 	_p := new(P)
 	_p.Init(p, p.bin.PStruct)
@@ -394,12 +376,6 @@ func (p *Process) parseG(gaddr uint64) (*G, error) {
 		return nil, err
 	}
 	g.CurLoc = p.getLocation(pc)
-
-	// m, err := p.parseM(g.MPtr)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// g.M = m
 
 	g.GoLoc = p.getLocation(g.Gopc)
 	g.StartLoc = p.getLocation(g.Startpc)
