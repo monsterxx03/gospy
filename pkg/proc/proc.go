@@ -11,7 +11,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/golang/glog"
 	gbin "gospy/pkg/binary"
 )
 
@@ -259,31 +258,13 @@ func (p *Process) GetPs(lock bool) ([]*P, error) {
 		}
 		defer p.Detach()
 	}
-	bin := p.bin
-	plen, err := p.Gomaxprocs()
+	_p := new(P)
+	_p.Init(p, p.bin.PStruct)
+	res, err := _p.ParsePtrSlice(p.bin.AllpAddr)
 	if err != nil {
 		return nil, err
 	}
-	allp, err := p.ReadVMA(bin.AllpAddr)
-	if err != nil {
-		glog.Errorf("Failed to vma for runtime.allg at %d", bin.AllpAddr)
-		return nil, err
-	}
-	result := make([]*P, 0, plen)
-	for i := 0; i < plen; i++ {
-		paddr := allp + uint64(i)*POINTER_SIZE
-		addr, err := p.ReadVMA(paddr)
-		if err != nil {
-			return nil, err
-		}
-		_p, err := p.parseP(addr)
-		if err != nil {
-			glog.Errorf("Failed to parse runtime.p at %d", err)
-			return nil, err
-		}
-		result = append(result, _p)
-	}
-	return result, nil
+	return res, nil
 }
 
 // GetGs return goroutines
@@ -294,92 +275,13 @@ func (p *Process) GetGs(lock bool) ([]*G, error) {
 		}
 		defer p.Detach()
 	}
-	bin := p.bin
-
-	allglen, err := p.ReadVMA(bin.AllglenAddr)
-	if err != nil {
-		glog.Errorf("Failed to read vma for runtime.allglen at %d", bin.AllglenAddr)
-		return nil, err
-	}
-	allgs, err := p.ReadVMA(bin.AllgsAddr)
-	if err != nil {
-		glog.Errorf("Failed to read vma for runtime.allgs at %d", bin.AllgsAddr)
-		return nil, err
-	}
-	// loop all groutines addresses
-	result := make([]*G, 0, allglen)
-	for i := uint64(0); i < allglen; i++ {
-		gaddr := allgs + i*POINTER_SIZE
-		addr, err := p.ReadVMA(gaddr)
-		if err != nil {
-			return nil, err
-		}
-		g, err := p.parseG(addr)
-		if err != nil {
-			return nil, err
-		}
-		if g.Dead() {
-			continue
-		}
-
-		result = append(result, g)
-	}
-	// sort.Slice(result, func(i, j int) bool {
-	// 	return result[i].ID < result[j].ID
-	// })
-	return result, nil
-}
-
-func (p *Process) parseP(paddr uint64) (*P, error) {
-	_p := new(P)
-	_p.Init(p, p.bin.PStruct)
-	if err := _p.Parse(paddr); err != nil {
-		return nil, err
-	}
-	// parse P's local queue size
-	runqsize := 0
-	for i := 0; i < len(_p.Runq); i += POINTER_SIZE {
-		gaddr := toUint64(_p.Runq[i : i+POINTER_SIZE])
-		if gaddr != 0 {
-			// should cache g by gaddr during one snapshot
-			g, err := p.parseG(gaddr)
-			if err != nil {
-				return nil, err
-			}
-			if !g.Dead() {
-				runqsize++
-			}
-		}
-	}
-	_p.Runqsize = runqsize
-
-	return _p, nil
-}
-
-func (p *Process) parseG(gaddr uint64) (*G, error) {
-	// TODO cache during same snapshot
 	g := new(G)
 	g.Init(p, p.bin.GStruct)
-	if err := g.Parse(gaddr); err != nil {
-		return nil, err
-	}
-	if g.Status == gdead {
-		return &G{Status: gdead}, nil
-	}
-
-	// parse pc from g.sched
-	gobuf := p.bin.GobufStruct
-	schedStart := p.bin.GStruct.Members["sched"].StrtOffset
-	addr := gaddr + uint64(schedStart+gobuf.Members["pc"].StrtOffset)
-	pc, err := p.ReadVMA(addr)
+	gs, err := g.ParsePtrSlice(p.bin.AllgsAddr)
 	if err != nil {
 		return nil, err
 	}
-	g.CurLoc = p.getLocation(pc)
-
-	g.GoLoc = p.getLocation(g.Gopc)
-	g.StartLoc = p.getLocation(g.Startpc)
-	return g, nil
+	return gs, nil
 }
 
 func (p *Process) Gomaxprocs() (int, error) {

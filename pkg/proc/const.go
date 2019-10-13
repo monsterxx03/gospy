@@ -1,5 +1,9 @@
 package proc
 
+import (
+	"fmt"
+)
+
 // amd64 pointer size
 const POINTER_SIZE = 8
 
@@ -138,4 +142,42 @@ var mspanStateStrings = [...]string{
 	mspanInUse:  "inuse",
 	mspanManual: "manual",
 	mspanFree:   "free",
+}
+
+// stringify status code
+
+type pstatus uint32
+
+func (s pstatus) String() string {
+	if s < 0 || s >= pstatus(len(pstatusStrings)) {
+		return fmt.Sprintf("unknown processor status %d", s)
+	}
+	return pstatusStrings[s]
+}
+
+type gstatus uint32
+
+func (s gstatus) String() string {
+	if s < 0 || s >= gstatus(len(gstatusStrings)) {
+		return fmt.Sprintf("unknown goroutine status %d", s)
+	}
+	return gstatusStrings[s]
+}
+
+type gwaitReason uint8
+
+func (w gwaitReason) String() string {
+	if w < 0 || w >= gwaitReason(len(gwaitReasonStrings)) {
+		return "unknown wait reason"
+	}
+	return gwaitReasonStrings[w]
+}
+
+type mspanstate uint8
+
+func (s mspanstate) String() string {
+	if s < 0 || s >= mspanstate(len(mspanStateStrings)) {
+		return fmt.Sprintf("unknown mspan state %d", s)
+	}
+	return mspanStateStrings[s]
 }
