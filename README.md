@@ -141,5 +141,6 @@ Yes :)
 
 ## TODO
 
+- Dump heap info
 - Support dump more variable types
 - Optimize performance

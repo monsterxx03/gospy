@@ -1,5 +1,6 @@
 ## 0.3.0(next)
 
+- refactor to make struct tags support more runtime types
 - Add `go var` command to dump a runtime global variable
 - Fix GC: TotalPauseTime
 - Dump target process's uptime

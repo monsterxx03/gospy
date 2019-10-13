@@ -138,7 +138,7 @@ func main() {
 		},
 		{
 			Name:  "heap",
-			Usage: "dump heap",
+			Usage: "dump heap(no finished)",
 			Flags: []cli.Flag{binFlag, pidFlag, nonblockingFlag},
 			Action: func(c *cli.Context) error {
 				p, err := proc.New(pid, bin)
