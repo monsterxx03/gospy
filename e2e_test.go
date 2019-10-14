@@ -6,7 +6,6 @@ import (
 	"strings"
 	"syscall"
 	"testing"
-	"time"
 
 	"gospy/pkg/proc"
 )
@@ -55,9 +54,8 @@ func testgo(t *testing.T, f string) error {
 	if !strings.HasPrefix(sum.GoVersion, os.Getenv("E2E_GO_VERSION")) {
 		t.Fatalf("remote process built with go%s, but parsed %s", os.Getenv("E2E_GO_VERSION"), sum.GoVersion)
 	}
-	time.Sleep(2 * time.Second)
-	if sum.RuntimeInitTime <= 0 {
-		t.Fatalf("wrong RuntimeInitTime %d", sum.RuntimeInitTime)
+	if err := p.DumpHeap(false); err != nil {
+		t.Fatal("Failed to dump heap:", err)
 	}
 
 	if err := cmd.Process.Kill(); err != nil {
