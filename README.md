@@ -1,3 +1,5 @@
+![](https://github.com/monsterxx03/gospy/workflows/go/badge.svg)
+
 # gospy: Non-Invasive goroutine inspector
 
 A tiny tool to inspect your go process's goroutine info, without single line change in your code. Inspired by [py-spy](https://github.com/benfred/py-spy),

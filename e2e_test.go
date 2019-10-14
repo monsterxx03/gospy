@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"os/exec"
 	"runtime"
 	"syscall"
@@ -49,8 +50,7 @@ func testgo(t *testing.T, f string) error {
 	if err != nil {
 		return err
 	}
-	t.Log("go version", sum.GoVersion)
-	// assert(t, sum.GoVersion, d.goversion)
+	assert(t, sum.GoVersion, os.Getenv("E2E_GO_VERSION")) // env var set in github actions
 	assert(t, sum.Gomaxprocs, runtime.NumCPU())
 
 	if err := cmd.Process.Kill(); err != nil {
