@@ -6,12 +6,12 @@ on:
 jobs:
 
   test:
-    name: e2e test on go
+    name: e2e test on go(e2e:${{ matrix.e2e_go_version }},gospy:${{ matrix.gospy_go_version }} )
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        gospy_go_version: [1.12, 1.13]
-        e2e_go_version: [1.10, 1.11, 1.12, 1.13]
+        gospy_go_version: ["1.12", "1.13"]
+        e2e_go_version: ["1.10", "1.11", "1.12", "1.13"]
     steps:
 
     - name: Setup e2e Go ${{ matrix.e2e_go_version }}
@@ -31,4 +31,4 @@ jobs:
         go-version: ${{ matrix.gospy_go_version }}
     
     - name: Test
-      run: go test
+      run: go test -v
