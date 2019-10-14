@@ -1,4 +1,4 @@
-![](https://github.com/monsterxx03/gospy/workflows/go/badge.svg)
+![](https://github.com/monsterxx03/gospy/workflows/Go/badge.svg)
 
 # gospy: Non-Invasive goroutine inspector
 

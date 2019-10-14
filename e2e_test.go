@@ -4,7 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"string"
+	"strings"
 	"syscall"
 	"testing"
 
