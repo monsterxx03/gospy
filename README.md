@@ -85,11 +85,10 @@ Current code won't work.
 
 tested:
 
-- [x] 1.10
-- [x] 1.10.8
-- [x] 1.11.13
-- [x] 1.12.9 
-- [x] 1.13.1
+- [x] 1.10.X
+- [x] 1.11.X
+- [x] 1.12.X 
+- [x] 1.13.X
 
 ## Build from source
 

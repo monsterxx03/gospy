@@ -55,7 +55,9 @@ func testgo(t *testing.T, f string) error {
 	if !strings.HasPrefix(sum.GoVersion, os.Getenv("E2E_GO_VERSION")) {
 		t.Fatalf("remote process built with go%s, but parsed %s", os.Getenv("E2E_GO_VERSION"), sum.GoVersion)
 	}
-	assert(t, sum.Gomaxprocs, runtime.NumCPU())
+	if sum.RuntimeInitTime <= 0 {
+		t.Fatalf("wrong RuntimeInitTime %d", sum.RuntimeInitTime)
+	}
 
 	if err := cmd.Process.Kill(); err != nil {
 		return err
