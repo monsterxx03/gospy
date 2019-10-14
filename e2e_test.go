@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"string"
 	"syscall"
 	"testing"
 
@@ -50,7 +51,10 @@ func testgo(t *testing.T, f string) error {
 	if err != nil {
 		return err
 	}
-	assert(t, sum.GoVersion, os.Getenv("E2E_GO_VERSION")) // env var set in github actions
+	// env var set in github actions
+	if !strings.HasPrefix(sum.GoVersion, os.Getenv("E2E_GO_VERSION")) {
+		t.Fatalf("remote process built with go%s, but parsed %s", os.Getenv("E2E_GO_VERSION"), sum.GoVersion)
+	}
 	assert(t, sum.Gomaxprocs, runtime.NumCPU())
 
 	if err := cmd.Process.Kill(); err != nil {
