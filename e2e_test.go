@@ -13,13 +13,7 @@ type data struct {
 	goversion string
 }
 
-var testdata = map[string]*data{
-	"testdata/test_1_10":    &data{"1.10"},
-	"testdata/test_1_10_8":  &data{"1.10.8"},
-	"testdata/test_1_11_13": &data{"1.11.13"},
-	"testdata/test_1_12_9":  &data{"1.12.9"},
-	"testdata/test_1_13_1":  &data{"1.13.1"},
-}
+const testbin = "testdata/test_bin" // created by github actions
 
 func assert(t *testing.T, a interface{}, b interface{}) {
 	if a != b {
@@ -28,7 +22,7 @@ func assert(t *testing.T, a interface{}, b interface{}) {
 	}
 }
 
-func testgo(t *testing.T, f string, d *data) error {
+func testgo(t *testing.T, f string) error {
 	done := make(chan int)
 	errCh := make(chan error)
 
@@ -55,7 +49,8 @@ func testgo(t *testing.T, f string, d *data) error {
 	if err != nil {
 		return err
 	}
-	assert(t, sum.GoVersion, d.goversion)
+	t.Log("go version", sum.GoVersion)
+	// assert(t, sum.GoVersion, d.goversion)
 	assert(t, sum.Gomaxprocs, runtime.NumCPU())
 
 	if err := cmd.Process.Kill(); err != nil {
@@ -72,10 +67,8 @@ func testgo(t *testing.T, f string, d *data) error {
 }
 
 func TestCompatibility(t *testing.T) {
-	for f, d := range testdata {
-		if err := testgo(t, f, d); err != nil {
-			t.Log(err)
-			t.Fail()
-		}
+	if err := testgo(t, testbin); err != nil {
+		t.Log(err)
+		t.Fail()
 	}
 }

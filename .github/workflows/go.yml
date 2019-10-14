@@ -6,10 +6,11 @@ on:
 jobs:
 
   test:
-    name: e2e test on different target go version
+    name: e2e test on go
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        gospy_go_version: [1.12, 1.13]
         e2e_go_version: [1.10, 1.11, 1.12, 1.13]
     steps:
 
@@ -22,7 +23,12 @@ jobs:
       uses: actions/checkout@v1
 
     - name: Build target process binary
-      run: go build -o testdata/test_${{ matrix.e2e_go_version }} testdata/test.go
+      run: go build -o testdata/test_bin testdata/test.go
+
+    - name: Setup gospy go ${{ matrix.gospy_go_version }}
+      uses: actions/setup-go@v1
+      with:
+        go-version: ${{ matrix.gospy_go_version }}
     
     - name: Test
-      run: ls testdata && go test
+      run: go test
