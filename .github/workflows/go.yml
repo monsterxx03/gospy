@@ -5,22 +5,24 @@ on:
       - master
 jobs:
 
-  build:
-    name: Build
+  test:
+    name: e2e test on different target go version
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go_version: [1.12, 1.13, 1.13.1]
+        e2e_go_version: [1.10, 1.11, 1.12, 1.13]
     steps:
 
-    - name: Set up Go ${{ matrix.go_version }}
+    - name: Setup e2e Go ${{ matrix.e2e_go_version }}
       uses: actions/setup-go@v1
       with:
-        go-version: ${{ matrix.go_version }}
-      id: go
+        go-version: ${{ matrix.e2e_go_version }}
 
-    - name: Check out code into the Go module directory
+    - name: Check out code
       uses: actions/checkout@v1
 
-    - name: Build
-      run: make
+    - name: Build target process binary
+      run: go build -o testdata/test_${{ matrix.e2e_go_version }} testdata/test.go
+    
+    - name: Test
+      run: ls testdata && go test
