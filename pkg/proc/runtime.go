@@ -151,7 +151,7 @@ type P struct {
 	Schedtick   uint32  `name:"schedtick"`
 	Syscalltick uint32  `name:"syscalltick"`
 	M           *M      `name:"m" binStrt:"runtime.m"`
-	Runq        []byte  `name:"runq"` // must be public to by parsed in reflect
+	Runq        []byte  `name:"runq"`
 	Runqsize    int
 }
 

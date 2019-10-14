@@ -56,68 +56,65 @@ func parse(baseAddr uint64, obj GoStructer) error {
 	t := reflect.TypeOf(obj).Elem()
 	v := reflect.ValueOf(obj).Elem()
 	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		name := field.Tag.Get("name")
+		tfield := t.Field(i)
+		vfield := v.Field(i)
+		name := tfield.Tag.Get("name")
 		if name != "" {
 			strtField := members[name]
 			addr := uint64(strtField.StrtOffset)
 			size := uint64(strtField.Size)
+			bstrt, err := getBinStrtFromField(p, tfield)
 			// fill obj's fields
-			switch field.Type.Kind() {
+			switch tfield.Type.Kind() {
 			case reflect.Struct:
 				// eg: G.Sched
-				bstrt, err := getBinStrtFromField(p, field)
 				if err != nil {
 					return err
 				}
-				strt := reflect.New(v.Field(i).Type())
+				strt := reflect.New(vfield.Type())
 				strt.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(p), reflect.ValueOf(bstrt)})
 				if err := parse(baseAddr+addr, strt.Interface().(GoStructer)); err != nil {
 					return err
 				}
-				v.Field(i).Set(strt.Elem())
+				vfield.Set(strt.Elem())
 			case reflect.Ptr:
 				// eg: G.M
 				_addr := toUint64(data[addr : addr+size])
 				if _addr == 0 {
 					continue
 				}
-				bstrt, err := getBinStrtFromField(p, field)
-				if err != nil {
-					return err
-				}
-				strt := reflect.New(v.Field(i).Type().Elem())
+				strt := reflect.New(vfield.Type().Elem())
 				// call Init dynamically
 				strt.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(p), reflect.ValueOf(bstrt)})
 				// recursive parse to fillin  instance
 				if err := parse(_addr, strt.Interface().(GoStructer)); err != nil {
 					return err
 				}
-				v.Field(i).Set(strt)
+				vfield.Set(strt)
 			case reflect.Uint64:
 				f := toUint64(data[addr : addr+size])
-				v.Field(i).SetUint(f)
+				vfield.SetUint(f)
 			case reflect.Uint32:
 				f := toUint32(data[addr : addr+size])
-				v.Field(i).SetUint(uint64(f))
+				vfield.SetUint(uint64(f))
 			case reflect.Uint16:
 				f := toUint16(data[addr : addr+size])
-				v.Field(i).SetUint(uint64(f))
+				vfield.SetUint(uint64(f))
 			case reflect.Uint8:
 				f := uint8(data[addr])
-				v.Field(i).SetUint(uint64(f))
+				vfield.SetUint(uint64(f))
 			case reflect.Int32:
 				f := toInt32(data[addr : addr+size])
-				v.Field(i).SetInt(int64(f))
+				vfield.SetInt(int64(f))
 			case reflect.Float64:
 				f := toFloat64(data[addr : addr+size])
-				v.Field(i).SetFloat(f)
+				vfield.SetFloat(f)
 			case reflect.Slice:
 				// check on slice item type
-				switch field.Type.Elem().Kind() {
+				switch tfield.Type.Elem().Kind() {
 				case reflect.Uint8:
 					// eg: P.Runq
-					v.Field(i).SetBytes(data[addr : addr+size])
+					vfield.SetBytes(data[addr : addr+size])
 					continue
 				case reflect.Ptr:
 					// eg: MHeap.MSpans
@@ -128,12 +125,8 @@ func parse(baseAddr uint64, obj GoStructer) error {
 					arrayptr := toUint64(data[addr : addr+POINTER_SIZE])
 					slen := toUint64(data[addr+POINTER_SIZE : addr+POINTER_SIZE*2])
 					scap := toUint64(data[addr+POINTER_SIZE*2 : addr+POINTER_SIZE*3])
-					slice := reflect.MakeSlice(reflect.SliceOf(field.Type.Elem()), 0, int(scap))
+					slice := reflect.MakeSlice(reflect.SliceOf(tfield.Type.Elem()), 0, int(scap))
 
-					bstrt, err := getBinStrtFromField(p, field)
-					if err != nil {
-						return err
-					}
 					sliceData := make([]byte, slen*POINTER_SIZE)
 					// bulk read array data on arrayptr
 					if err := p.ReadData(sliceData, arrayptr); err != nil {
@@ -141,7 +134,7 @@ func parse(baseAddr uint64, obj GoStructer) error {
 					}
 					for j := uint64(0); j < slen; j++ {
 						// rebuild slice items
-						strt := reflect.New(field.Type.Elem().Elem())
+						strt := reflect.New(tfield.Type.Elem().Elem())
 						// call Init dynamically
 						strt.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(p), reflect.ValueOf(bstrt)})
 						idx := j * POINTER_SIZE
@@ -150,13 +143,13 @@ func parse(baseAddr uint64, obj GoStructer) error {
 						}
 						slice = reflect.Append(slice, strt)
 					}
-					v.Field(i).Set(slice)
+					vfield.Set(slice)
 					continue
 				default:
-					return fmt.Errorf("Unsupport slice item %+v", field)
+					return fmt.Errorf("Unsupport slice item %+v", tfield)
 				}
 			default:
-				return fmt.Errorf("unsupport %+v, type: %s", field, field.Type.Kind())
+				return fmt.Errorf("unsupport %+v, type: %s", tfield, tfield.Type.Kind())
 			}
 		}
 	}
