@@ -56,6 +56,7 @@ type Binary struct {
 	SchedtStruct        *Strt  // parsed runtime.schedt struct
 	MStatsStruct        *Strt  // parsed runtime.mstats struct
 	MSpanStruct         *Strt  // parsed runtime.mspan struct
+	MCentralStruct      *Strt  // parsed runtime.mcentral struct
 	MHeapStruct         *Strt  //parsed runtime.mheap struct
 	SchedAddr           uint64 // parsed vma of runtime.sched
 	AllglenAddr         uint64 // parsed vma of runtime.allglen
@@ -135,6 +136,7 @@ func (b *Binary) Initialize() error {
 		&unit{"runtime.mspan", UTYPE_STRUCT},
 		&unit{"runtime.mheap", UTYPE_STRUCT},
 		&unit{"runtime.mheap_", UTYPE_VAR},
+		&unit{"runtime.mcentral", UTYPE_STRUCT},
 	)
 	if err != nil {
 		return err
@@ -166,6 +168,8 @@ func (b *Binary) Initialize() error {
 	b.StrtMap["runtime.mheap"] = b.MHeapStruct
 	b.MSpanStruct = result["runtime.mspan"].(*Strt)
 	b.StrtMap["runtime.mspan"] = b.MSpanStruct
+	b.MCentralStruct = result["runtime.mcentral"].(*Strt)
+	b.StrtMap["runtime.mcentral"] = b.MCentralStruct
 	return nil
 }
 

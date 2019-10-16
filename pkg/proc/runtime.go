@@ -253,28 +253,3 @@ type MemStat struct {
 func (m *MemStat) Parse(addr uint64) error {
 	return parse(addr, m)
 }
-
-type MSpan struct {
-	common
-	Npages     uint64     `name:"npages"`
-	Sweepgen   uint32     `name:"sweepgen"`
-	AllocCount uint16     `name:"allocCount"`
-	State      mspanstate `name:"state"`
-}
-
-func (s *MSpan) Parse(addr uint64) error {
-	return parse(addr, s)
-}
-
-// MHeap hold process heap info (runtime/mheap.go:mheap)
-type MHeap struct {
-	common
-	Sweepgen   uint32   `name:"sweepgen"` // used to compare with mspan.sweepgen
-	MSpans     []*MSpan `name:"allspans" binStrt:"runtime.mspan"`
-	PagesInUse uint64   `name:"pagesInUse"` // pages of spans in stats mSpanInUse
-	PagesSwept uint64   `name:"pagesSwept"` // pages swept this cycle
-}
-
-func (h *MHeap) Parse(addr uint64) error {
-	return parse(addr, h)
-}

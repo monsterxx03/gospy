@@ -146,7 +146,7 @@ func parse(baseAddr uint64, obj GoStructer) error {
 					vfield.Set(slice)
 					continue
 				default:
-					return fmt.Errorf("Unsupport slice item %+v", tfield)
+					return fmt.Errorf("Unsupport slice item %+v, type: %s", tfield, tfield.Type.Elem().Kind())
 				}
 			default:
 				return fmt.Errorf("unsupport %+v, type: %s", tfield, tfield.Type.Kind())
