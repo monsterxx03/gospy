@@ -1,12 +1,56 @@
 package proc
 
+import (
+	"sort"
+)
+
 type MCache struct {
 	common
 	TinyOffset  uint64 `name:"tinyoffset"`
 	NTinyallocs uint64 `name:"local_tinyallocs"`
 
-	Alloc    [numSpanClasses]*MSpan `name:"alloc" binStrt:"runtime.mspan"`
-	FlushGen uint32                 `name:"flushGen"`
+	Alloc [numSpanClasses]*MSpan `name:"alloc" binStrt:"runtime.mspan"`
+
+	LargeFree  uint64 `name:"local_largefree"`  // bytes freed for large objects (>maxsmallsize)
+	NLargeFree uint64 `name:"local_nlargefree"` // number of frees for large objects (>maxsmallsize)
+	FlushGen   uint32 `name:"flushGen"`
+}
+
+type smallsize struct {
+	sc         spanClass
+	npages     uint64
+	allocCount uint16
+}
+
+func (c *MCache) SmallSizeObjectSummary() []smallsize {
+	summary := make(map[uint64]smallsize)
+	// group by spanclass size
+	for _, m := range c.Alloc {
+		if !m.Active() {
+			continue
+		}
+		sum, ok := summary[m.SpanClass.Size()]
+		if !ok {
+			summary[m.SpanClass.Size()] = smallsize{sc: m.SpanClass, npages: m.Npages, allocCount: m.AllocCount}
+		} else {
+			sum.npages += m.Npages
+			sum.allocCount += m.AllocCount
+		}
+	}
+	// sort size key
+	sizes := make([]uint64, 0, len(summary))
+	for size := range summary {
+		sizes = append(sizes, size)
+	}
+	sort.Slice(sizes, func(i, j int) bool {
+		return sizes[i] < sizes[j]
+	})
+	// sosrt by size
+	scs := make([]smallsize, 0, len(sizes))
+	for _, size := range sizes {
+		scs = append(scs, summary[size])
+	}
+	return scs
 }
 
 func (c *MCache) Parse(addr uint64) error {

@@ -15,18 +15,32 @@ var class_to_size = [_NumSizeClasses]uint16{0, 8, 16, 32, 48, 64, 80, 96, 112, 1
 
 type spanClass uint8
 
+func (s spanClass) Size() uint64 {
+	return uint64(class_to_size[int8(s>>1)])
+}
+
 func (s spanClass) String() string {
-	size := class_to_size[int8(s>>1)]
-	return humanateBytes(uint64(size))
+	idx := int8(s >> 1)
+	if idx > 0 {
+		lower := uint64(class_to_size[idx-1])
+		up := uint64(class_to_size[idx])
+		return humanateBytes(lower) + "~" + humanateBytes(up)
+	}
+	return "0B"
 }
 
 type MSpan struct {
 	common
+	StartAddr  uint64     `name:"startAddr"`
 	Npages     uint64     `name:"npages"`
 	SpanClass  spanClass  `name:"spanclass"`
 	Sweepgen   uint32     `name:"sweepgen"`
 	AllocCount uint16     `name:"allocCount"`
 	State      mspanstate `name:"state"`
+}
+
+func (s *MSpan) Active() bool {
+	return s.State != mspanDead
 }
 
 func (s *MSpan) Parse(addr uint64) error {
@@ -46,11 +60,16 @@ func (c *MCentral) Parse(addr uint64) error {
 // MHeap hold process heap info (runtime/mheap.go:mheap)
 type MHeap struct {
 	common
-	Sweepgen    uint32   `name:"sweepgen"` // used to compare with mspan.sweepgen
+	Sweepgen    uint32   `name:"sweepgen"`  // used to compare with mspan.sweepgen
+	SweepDone   uint32   `name:"sweepdone"` //all spans are swept
+	Sweepers    uint32   `name:"sweepers"`  // number of active sweepone calls
 	MSpans      []*MSpan `name:"allspans" binStrt:"runtime.mspan"`
 	PagesInUse  uint64   `name:"pagesInUse"`  // pages of spans in stats mSpanInUse
 	PagesSwept  uint64   `name:"pagesSwept"`  // pages swept this cycle
+	LargeAlloc  uint64   `name:"largealloc"`  // bytes allocated for large objects
 	NLargeAlloc uint64   `name:"nlargealloc"` // number of large object allocations
+	Largefree   uint64   `name:"largefree"`   // bytes freed for large objects (>maxsmallsize)
+	NLargefree  uint64   `name:"nlargefree"`  // number of frees for large objects (>maxsmallsize)
 	Central     []*MCentral
 }
 

@@ -148,18 +148,26 @@ func (p *Process) DumpHeap(lock bool) error {
 	if err := h.Parse(p.bin.MHeapAddr); err != nil {
 		return err
 	}
-	for _, m := range h.MSpans {
-		fmt.Printf("%+v\n", m)
-	}
+	fmt.Printf("PagesInUse: %d, PagesSwept: %d\n"+
+		"Large Object(>32KB) Stats: AllocNum: %d, AllocRamSize: %s, FreeNum: %d, FreedRamSize: %s\n"+
+		"SweepDone: %d, Sweepers: %d, Sweepgen: %d\n",
+		h.PagesInUse, h.PagesSwept,
+		h.NLargeAlloc, humanateBytes(h.LargeAlloc), h.NLargefree, humanateBytes(h.Largefree),
+		h.SweepDone, h.Sweepers, h.Sweepgen,
+	)
 
 	ps, err := p.GetPs(false)
 	if err != nil {
 		return err
 	}
 	for i, _p := range ps {
-		fmt.Println("i:", i)
-		for _, m := range _p.MCache.Alloc {
-			fmt.Printf("%+v\n", m)
+		fmt.Printf("P%d, FlushGen:%d:\n", i, _p.MCache.FlushGen)
+		fmt.Printf("\tTiny size object(<16B): AllocNum: %d, BytesUsage: %d/16\n", _p.MCache.NTinyallocs, _p.MCache.TinyOffset)
+		fmt.Printf("\tLarge size object freed(>32KB): FreeNum: %d, FreedRamSize: %s\n", _p.MCache.NLargeFree, humanateBytes(_p.MCache.LargeFree))
+		fmt.Printf("\tSmall size object(<32KB):\n")
+		ss := _p.MCache.SmallSizeObjectSummary()
+		for _, item := range ss {
+			fmt.Printf("\t\t%s: npages: %d, allocCount: %d\n", item.sc, item.npages, item.allocCount)
 		}
 	}
 
