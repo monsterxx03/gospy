@@ -151,6 +151,18 @@ func (p *Process) DumpHeap(lock bool) error {
 	for _, m := range h.MSpans {
 		fmt.Printf("%+v\n", m)
 	}
+
+	ps, err := p.GetPs(false)
+	if err != nil {
+		return err
+	}
+	for i, _p := range ps {
+		fmt.Println("i:", i)
+		for _, m := range _p.MCache.Alloc {
+			fmt.Printf("%+v\n", m)
+		}
+	}
+
 	return nil
 }
 

@@ -109,6 +109,26 @@ func parse(baseAddr uint64, obj GoStructer) error {
 			case reflect.Float64:
 				f := toFloat64(data[addr : addr+size])
 				vfield.SetFloat(f)
+			case reflect.Array:
+				switch tfield.Type.Elem().Kind() {
+				case reflect.Ptr:
+					// eg: MCache.Alloc
+					arrayData := data[addr : addr+size]
+					arrayType := reflect.ArrayOf(tfield.Type.Len(), tfield.Type.Elem())
+					array := reflect.New(arrayType).Elem()
+					for j := 0; j < tfield.Type.Len(); j++ {
+						strt := reflect.New(tfield.Type.Elem().Elem())
+						strt.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(p), reflect.ValueOf(bstrt)})
+						idx := j * POINTER_SIZE
+						if err := parse(toUint64(arrayData[idx:idx+POINTER_SIZE]), strt.Interface().(GoStructer)); err != nil {
+							return err
+						}
+						array.Index(j).Set(strt)
+					}
+					vfield.Set(array)
+				default:
+					return fmt.Errorf("unsupport array item +%v, type:%s", tfield, tfield.Type.Elem().Kind())
+				}
 			case reflect.Slice:
 				// check on slice item type
 				switch tfield.Type.Elem().Kind() {
