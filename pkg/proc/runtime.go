@@ -32,6 +32,7 @@ type GoStructer interface {
 
 type Gobuf struct {
 	common
+	SP uint64 `name:"sp"`
 	PC uint64 `name:"pc"`
 }
 
@@ -39,9 +40,20 @@ func (b *Gobuf) Parse(addr uint64) error {
 	return parse(addr, b)
 }
 
+type stack struct {
+	common
+	Lo uint64 `name:"lo"`
+	Hi uint64 `name:"hi"`
+}
+
+func (s *stack) Parse(addr uint64) error {
+	return parse(addr, s)
+}
+
 // G is runtime.g struct parsed from process memory and binary dwarf
 type G struct {
 	common
+	Stack      stack          `name:"stack" binStrt:"runtime.stack"`
 	ID         uint64         `name:"goid"`         // goid
 	Status     gstatus        `name:"atomicstatus"` // atomicstatus
 	WaitReason gwaitReason    `name:"waitreason"`   // if Status ==Gwaiting
@@ -53,6 +65,10 @@ type G struct {
 	UserLoc    *gbin.Location // location of user code, a subset of CurLoc
 	GoLoc      *gbin.Location // location of `go` statement that spawed this goroutine
 	StartLoc   *gbin.Location // location of goroutine start function
+}
+
+func (g *G) StackSize() uint64 {
+	return g.Stack.Hi - g.Stack.Lo
 }
 
 func (g *G) Parse(addr uint64) error {

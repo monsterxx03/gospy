@@ -59,6 +59,7 @@ type Binary struct {
 	MCentralStruct      *Strt  // parsed runtime.mcentral struct
 	MHeapStruct         *Strt  //parsed runtime.mheap struct
 	MCacheStruct        *Strt  // parsed runtime.mcache struct
+	StackStruct         *Strt  // parsed runtime.stack struct
 	SchedAddr           uint64 // parsed vma of runtime.sched
 	AllglenAddr         uint64 // parsed vma of runtime.allglen
 	AllgsAddr           uint64 // parsed vma of runtime.allgs
@@ -139,6 +140,7 @@ func (b *Binary) Initialize() error {
 		&unit{"runtime.mheap_", UTYPE_VAR},
 		&unit{"runtime.mcentral", UTYPE_STRUCT},
 		&unit{"runtime.mcache", UTYPE_STRUCT},
+		&unit{"runtime.stack", UTYPE_STRUCT},
 	)
 	if err != nil {
 		return err
@@ -174,6 +176,8 @@ func (b *Binary) Initialize() error {
 	b.StrtMap["runtime.mcentral"] = b.MCentralStruct
 	b.MCacheStruct = result["runtime.mcache"].(*Strt)
 	b.StrtMap["runtime.mcache"] = b.MCacheStruct
+	b.StackStruct = result["runtime.stack"].(*Strt)
+	b.StrtMap["runtime.stack"] = b.StackStruct
 	return nil
 }
 
