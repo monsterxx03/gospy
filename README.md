@@ -78,6 +78,49 @@ dump a global variable value by name: `sudo ./gospy var --pid 1234 --name runtim
 - bool
 - string
 
+### heap
+
+dump runtime heap info: `sudo ./gospy heap --pid 1234`
+
+    
+    PagesInUse: 918, PagesSwept: 977
+    Large Object(>32KB) Stats: AllocNum: 21, AllocRamSize: 4.52MB, FreeNum: 16, FreedRamSize: 3.38MB
+    SweepDone: 1, Sweepers: 0, Sweepgen: 82
+    P0, FlushGen:82:
+            Tiny size object(<16B): AllocNum: 9, BytesUsage: 11/16
+            Large size object freed(>32KB): FreeNum: 0, FreedRamSize: 0B
+            Small size object(<32KB):
+                    0B~8B: npages: 1, allocCount: 114
+                    8B~16B: npages: 1, allocCount: 259
+                    16B~32B: npages: 1, allocCount: 146
+                    32B~48B: npages: 1, allocCount: 21
+                    48B~64B: npages: 1, allocCount: 40
+                    64B~80B: npages: 1, allocCount: 88
+                    80B~96B: npages: 1, allocCount: 76
+                    96B~112B: npages: 1, allocCount: 17
+                    112B~128B: npages: 1, allocCount: 48
+                    144B~160B: npages: 1, allocCount: 26
+                    160B~176B: npages: 1, allocCount: 13
+                    176B~192B: npages: 1, allocCount: 14
+                    208B~224B: npages: 1, allocCount: 24
+                    240B~256B: npages: 1, allocCount: 19
+                    256B~288B: npages: 1, allocCount: 15
+                    288B~320B: npages: 1, allocCount: 16
+                    352B~384B: npages: 1, allocCount: 19
+                    480B~512B: npages: 1, allocCount: 14
+                    512B~576B: npages: 1, allocCount: 1
+                    576B~640B: npages: 1, allocCount: 5
+                    704B~768B: npages: 1, allocCount: 6
+                    768B~896B: npages: 1, allocCount: 7
+                    896B~1.00KB: npages: 1, allocCount: 2
+                    1.00KB~1.12KB: npages: 1, allocCount: 4
+                    1.12KB~1.25KB: npages: 1, allocCount: 3
+                    1.25KB~1.38KB: npages: 2, allocCount: 8
+                    2.00KB~2.25KB: npages: 2, allocCount: 5
+                    4.75KB~5.25KB: npages: 2, allocCount: 3
+    P1, FlushGen: 82:
+        ...
+
 ## Target process go version compatibility
 
 Works on target go version >= 1.10, the DWARF info in binary is different before 1.10: https://golang.org/doc/go1.10#compiler.
@@ -142,6 +185,5 @@ Yes :)
 
 ## TODO
 
-- Dump heap info
 - Support dump more variable types
 - Optimize performance

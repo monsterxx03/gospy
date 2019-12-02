@@ -1,10 +1,11 @@
-## 0.3.0(next)
+## 0.3.0
 
-- refactor to make struct tags support more runtime types
-- Add `go var` command to dump a runtime global variable
-- Fix GC: TotalPauseTime
+- Refactor to make struct tags support more runtime types
+- Add `gospy var` command to dump a runtime global variable
+- Add `gospy heap` command to dump runtime heap info
 - Dump target process's uptime
 - Dump target process's last gc time
+- Fix GC: TotalPauseTime
 
 ## 0.2.0
 
