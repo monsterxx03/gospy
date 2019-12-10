@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	SUMMARY_HEIGHT = 4
+	SUMMARY_HEIGHT = 7
 	TOP_HEIGHT     = 50
 )
 
