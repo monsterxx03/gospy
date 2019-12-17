@@ -81,7 +81,7 @@ func (p *P) Parse(addr uint64) error {
 		if gaddr != 0 {
 			// should cache g by gaddr during one snapshot
 			g := new(G)
-			g.Init(process, process.bin.GStruct)
+			g.Init(process, process.bin.GStruct, gaddr)
 			if err := g.Parse(gaddr); err != nil {
 				return err
 			}
@@ -102,7 +102,7 @@ func (p *P) ParsePtrSlice(addr uint64) ([]*P, error) {
 	result := make([]*P, 0, len(res))
 	for _, addr := range res {
 		_p := new(P)
-		_p.Init(p.Process(), p.BinStrt())
+		_p.Init(p.Process(), p.BinStrt(), addr)
 		if err := _p.Parse(addr); err != nil {
 			return nil, err
 		}

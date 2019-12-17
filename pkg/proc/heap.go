@@ -84,9 +84,9 @@ func (h *MHeap) Parse(addr uint64) error {
 	// base addr of centray field
 	centralAddr := addr + uint64(bin.Members["central"].StrtOffset)
 	for i := int64(0); i < arrayLen; i++ {
-		mcentral := new(MCentral)
-		mcentral.Init(p, p.bin.MCentralStruct)
 		maddr := centralAddr + uint64(i*itemSize)
+		mcentral := new(MCentral)
+		mcentral.Init(p, p.bin.MCentralStruct, maddr)
 		if err := mcentral.Parse(maddr); err != nil {
 			return err
 		}

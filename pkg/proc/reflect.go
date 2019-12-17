@@ -72,7 +72,7 @@ func parse(baseAddr uint64, obj GoStructer) error {
 					return err
 				}
 				strt := reflect.New(vfield.Type())
-				strt.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(p), reflect.ValueOf(bstrt)})
+				strt.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(p), reflect.ValueOf(bstrt), reflect.ValueOf(baseAddr + addr)})
 				if err := parse(baseAddr+addr, strt.Interface().(GoStructer)); err != nil {
 					return err
 				}
@@ -85,7 +85,7 @@ func parse(baseAddr uint64, obj GoStructer) error {
 				}
 				strt := reflect.New(vfield.Type().Elem())
 				// call Init dynamically
-				strt.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(p), reflect.ValueOf(bstrt)})
+				strt.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(p), reflect.ValueOf(bstrt), reflect.ValueOf(_addr)})
 				// recursive parse to fillin  instance
 				if err := parse(_addr, strt.Interface().(GoStructer)); err != nil {
 					return err
@@ -121,6 +121,13 @@ func parse(baseAddr uint64, obj GoStructer) error {
 			case reflect.Float64:
 				f := toFloat64(data[addr : addr+size])
 				vfield.SetFloat(f)
+			case reflect.String:
+				_addr := toUint64(data[addr : addr+8])
+				str, err := p.parseString(_addr)
+				if err != nil {
+					return err
+				}
+				vfield.SetString(str)
 			case reflect.Array:
 				switch tfield.Type.Elem().Kind() {
 				case reflect.Ptr:
@@ -129,10 +136,11 @@ func parse(baseAddr uint64, obj GoStructer) error {
 					arrayType := reflect.ArrayOf(tfield.Type.Len(), tfield.Type.Elem())
 					array := reflect.New(arrayType).Elem()
 					for j := 0; j < tfield.Type.Len(); j++ {
-						strt := reflect.New(tfield.Type.Elem().Elem())
-						strt.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(p), reflect.ValueOf(bstrt)})
 						idx := j * POINTER_SIZE
-						if err := parse(toUint64(arrayData[idx:idx+POINTER_SIZE]), strt.Interface().(GoStructer)); err != nil {
+						strt := reflect.New(tfield.Type.Elem().Elem())
+						_addr := toUint64(arrayData[idx : idx+POINTER_SIZE])
+						strt.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(p), reflect.ValueOf(bstrt), reflect.ValueOf(_addr)})
+						if err := parse(_addr, strt.Interface().(GoStructer)); err != nil {
 							return err
 						}
 						array.Index(j).Set(strt)
@@ -167,10 +175,11 @@ func parse(baseAddr uint64, obj GoStructer) error {
 					for j := uint64(0); j < slen; j++ {
 						// rebuild slice items
 						strt := reflect.New(tfield.Type.Elem().Elem())
-						// call Init dynamically
-						strt.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(p), reflect.ValueOf(bstrt)})
 						idx := j * POINTER_SIZE
-						if err := parse(toUint64(sliceData[idx:idx+POINTER_SIZE]), strt.Interface().(GoStructer)); err != nil {
+						_addr := toUint64(sliceData[idx : idx+POINTER_SIZE])
+						// call Init dynamically
+						strt.MethodByName("Init").Call([]reflect.Value{reflect.ValueOf(p), reflect.ValueOf(bstrt), reflect.ValueOf(_addr)})
+						if err := parse(_addr, strt.Interface().(GoStructer)); err != nil {
 							return err
 						}
 						slice = reflect.Append(slice, strt)

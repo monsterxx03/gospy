@@ -7,11 +7,13 @@ import (
 )
 
 type common struct {
+	_addr    uint64
 	_p       *Process
 	_binStrt *gbin.Strt
 }
 
-func (c *common) Init(p *Process, binStrt *gbin.Strt) {
+func (c *common) Init(p *Process, binStrt *gbin.Strt, addr uint64) {
+	c._addr = addr
 	c._p = p
 	c._binStrt = binStrt
 }
@@ -24,8 +26,12 @@ func (c *common) BinStrt() *gbin.Strt {
 	return c._binStrt
 }
 
+func (c *common) Addr() uint64 {
+	return c._addr
+}
+
 type GoStructer interface {
-	Init(p *Process, binStrt *gbin.Strt)
+	Init(p *Process, binStrt *gbin.Strt, addr uint64)
 	Parse(addr uint64) error
 	BinStrt() *gbin.Strt
 	Process() *Process
@@ -86,7 +92,7 @@ func (h *HChan) Parse(addr uint64) error {
 }
 
 func (h *HChan) String() string {
-	return fmt.Sprintf("elemsize: %d, elemtype: %s", h.ElemSize, h.ElemType)
+	return fmt.Sprintf("elemsize: %d, elemtype: %s, addr: %d", h.ElemSize, h.ElemType, h.Addr())
 }
 
 // G is runtime.g struct parsed from process memory and binary dwarf
@@ -133,7 +139,7 @@ func (g *G) ParsePtrSlice(addr uint64) ([]*G, error) {
 	result := make([]*G, 0, len(res))
 	for _, addr := range res {
 		_g := new(G)
-		_g.Init(g.Process(), g.BinStrt())
+		_g.Init(g.Process(), g.BinStrt(), addr)
 		if err := _g.Parse(addr); err != nil {
 			return nil, err
 		}

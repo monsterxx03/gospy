@@ -144,7 +144,7 @@ func (p *Process) DumpHeap(lock bool) error {
 		defer p.Detach()
 	}
 	h := new(MHeap)
-	h.Init(p, p.bin.MHeapStruct)
+	h.Init(p, p.bin.MHeapStruct, p.bin.MHeapAddr)
 	if err := h.Parse(p.bin.MHeapAddr); err != nil {
 		return err
 	}
@@ -279,7 +279,7 @@ func (p *Process) GetPs(lock bool) ([]*P, error) {
 		defer p.Detach()
 	}
 	_p := new(P)
-	_p.Init(p, p.bin.PStruct)
+	_p.Init(p, p.bin.PStruct, 0) // 0 is fake address
 	res, err := _p.ParsePtrSlice(p.bin.AllpAddr)
 	if err != nil {
 		return nil, err
@@ -296,7 +296,7 @@ func (p *Process) GetGs(lock bool) ([]*G, error) {
 		defer p.Detach()
 	}
 	g := new(G)
-	g.Init(p, p.bin.GStruct)
+	g.Init(p, p.bin.GStruct, 0) // 0 is fake address
 	gs, err := g.ParsePtrSlice(p.bin.AllgsAddr)
 	if err != nil {
 		return nil, err
@@ -336,7 +336,7 @@ func (p *Process) GoVersion() (string, error) {
 
 func (p *Process) SchedInfo() (*Sched, error) {
 	sched := new(Sched)
-	sched.Init(p, p.bin.SchedtStruct)
+	sched.Init(p, p.bin.SchedtStruct, p.bin.SchedAddr)
 	if err := sched.Parse(p.bin.SchedAddr); err != nil {
 		return nil, err
 	}
@@ -345,7 +345,7 @@ func (p *Process) SchedInfo() (*Sched, error) {
 
 func (p *Process) MemStat() (*MemStat, error) {
 	mem := new(MemStat)
-	mem.Init(p, p.bin.MStatsStruct)
+	mem.Init(p, p.bin.MStatsStruct, p.bin.MStatsAddr)
 	if err := mem.Parse(p.bin.MStatsAddr); err != nil {
 		return nil, err
 	}
@@ -364,6 +364,9 @@ func (p *Process) parseString(addr uint64) (string, error) {
 	// go string is dataPtr(8 bytes) + len(8 bytes), we can parse string
 	// struct from binary with t.bin().Parse, but since its
 	// structure is fixed, we can parse directly here.
+	if addr == 0 {
+		return "", nil
+	}
 	ptr, err := p.ReadVMA(addr)
 	if err != nil {
 		return "", err
