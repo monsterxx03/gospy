@@ -67,6 +67,9 @@ type Binary struct {
 	GomaxprocsAddr      uint64 // parsed vma of runtime.gomaxprocs
 	MStatsAddr          uint64 // parsed vma of runtime.memstats
 	MHeapAddr           uint64 // parsed vma of runtime.mheap_
+	SudogStruct         *Strt  //parsed runtime.sudog struct
+	HChanStruct         *Strt  // parsed runtime.hchan struct
+	TypeStruct          *Strt  // parsed runtime._type struct
 }
 
 // Strt is a abstruct struct parsed from dwarf info
@@ -141,6 +144,9 @@ func (b *Binary) Initialize() error {
 		&unit{"runtime.mcentral", UTYPE_STRUCT},
 		&unit{"runtime.mcache", UTYPE_STRUCT},
 		&unit{"runtime.stack", UTYPE_STRUCT},
+		&unit{"runtime.sudog", UTYPE_STRUCT},
+		&unit{"runtime.hchan", UTYPE_STRUCT},
+		&unit{"runtime._type", UTYPE_STRUCT},
 	)
 	if err != nil {
 		return err
@@ -178,6 +184,12 @@ func (b *Binary) Initialize() error {
 	b.StrtMap["runtime.mcache"] = b.MCacheStruct
 	b.StackStruct = result["runtime.stack"].(*Strt)
 	b.StrtMap["runtime.stack"] = b.StackStruct
+	b.SudogStruct = result["runtime.sudog"].(*Strt)
+	b.StrtMap["runtime.sudog"] = b.SudogStruct
+	b.HChanStruct = result["runtime.hchan"].(*Strt)
+	b.StrtMap["runtime.hchan"] = b.HChanStruct
+	b.TypeStruct = result["runtime._type"].(*Strt)
+	b.StrtMap["runtime._type"] = b.TypeStruct
 	return nil
 }
 

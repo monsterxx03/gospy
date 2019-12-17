@@ -91,6 +91,15 @@ func parse(baseAddr uint64, obj GoStructer) error {
 					return err
 				}
 				vfield.Set(strt)
+			case reflect.Bool:
+				if data[addr : addr+size][0] == 1 {
+					vfield.SetBool(true)
+				} else {
+					vfield.SetBool(false)
+				}
+			case reflect.Uint:
+				f := toUint64(data[addr : addr+size])
+				vfield.SetUint(f)
 			case reflect.Uint64:
 				f := toUint64(data[addr : addr+size])
 				vfield.SetUint(f)
@@ -105,6 +114,9 @@ func parse(baseAddr uint64, obj GoStructer) error {
 				vfield.SetUint(uint64(f))
 			case reflect.Int32:
 				f := toInt32(data[addr : addr+size])
+				vfield.SetInt(int64(f))
+			case reflect.Int64:
+				f := toInt64(data[addr : addr+size])
 				vfield.SetInt(int64(f))
 			case reflect.Float64:
 				f := toFloat64(data[addr : addr+size])

@@ -2,6 +2,7 @@
 package proc
 
 import (
+	"fmt"
 	gbin "gospy/pkg/binary"
 )
 
@@ -50,21 +51,60 @@ func (s *stack) Parse(addr uint64) error {
 	return parse(addr, s)
 }
 
+// Sudog is runtime.sudog, when a g entering waiting state, it's attached on sudog
+type Sudog struct {
+	common
+	IsSelect    bool   `name:"isSelect"`
+	Ticket      uint32 `name:"ticket"`
+	AcquireTime int64  `name:"acquiretime"`
+	ReleaseTime int64  `name:"releasetime"`
+	C           *HChan `name:"c" binStrt:"runtime.hchan"`
+}
+
+func (s *Sudog) String() string {
+	return fmt.Sprintf("isSelect %t, chan: %+v", s.IsSelect, s.C)
+}
+
+func (s *Sudog) Parse(addr uint64) error {
+	return parse(addr, s)
+}
+
+// HChan is runtime.hchan, result of make(chan xx)
+type HChan struct {
+	common
+	QCount    uint   `name:"qcount"`
+	DataqSize uint   `name:"dataqsiz"`
+	ElemSize  uint16 `name:"elemsize"`
+	ElemType  *Type  `name:"elemtype" binStrt:"runtime._type"`
+	Closed    uint32 `name:"closed"`
+	Sendx     uint   `name:"sendx"`
+	Recvx     uint   `name:"recvx"`
+}
+
+func (h *HChan) Parse(addr uint64) error {
+	return parse(addr, h)
+}
+
+func (h *HChan) String() string {
+	return fmt.Sprintf("elemsize: %d, elemtype: %s", h.ElemSize, h.ElemType)
+}
+
 // G is runtime.g struct parsed from process memory and binary dwarf
 type G struct {
 	common
-	Stack      stack          `name:"stack" binStrt:"runtime.stack"`
-	ID         uint64         `name:"goid"`         // goid
-	Status     gstatus        `name:"atomicstatus"` // atomicstatus
-	WaitReason gwaitReason    `name:"waitreason"`   // if Status ==Gwaiting
-	Sched      Gobuf          `name:"sched" binStrt:"runtime.gobuf"`
-	Startpc    uint64         `name:"startpc"`
-	Gopc       uint64         `name:"gopc"`
-	M          *M             `name:"m" binStrt:"runtime.m"` // hold worker thread info
-	CurLoc     *gbin.Location // runtime location
-	UserLoc    *gbin.Location // location of user code, a subset of CurLoc
-	GoLoc      *gbin.Location // location of `go` statement that spawed this goroutine
-	StartLoc   *gbin.Location // location of goroutine start function
+	Stack        stack          `name:"stack" binStrt:"runtime.stack"`
+	ID           uint64         `name:"goid"`         // goid
+	Status       gstatus        `name:"atomicstatus"` // atomicstatus
+	WaitReason   gwaitReason    `name:"waitreason"`   // if Status ==Gwaiting
+	Sched        Gobuf          `name:"sched" binStrt:"runtime.gobuf"`
+	Startpc      uint64         `name:"startpc"`
+	Gopc         uint64         `name:"gopc"`
+	M            *M             `name:"m" binStrt:"runtime.m"` // hold worker thread info
+	WaitingSudog *Sudog         `name:"waiting" binStrt:"runtime.sudog"`
+	CurLoc       *gbin.Location // runtime location
+	UserLoc      *gbin.Location // location of user code, a subset of CurLoc
+	GoLoc        *gbin.Location // location of `go` statement that spawed this goroutine
+	StartLoc     *gbin.Location // location of goroutine start function
 }
 
 func (g *G) StackSize() uint64 {
