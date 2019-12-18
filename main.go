@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"sort"
 
 	"github.com/olekukonko/tablewriter"
+
 	"github.com/urfave/cli"
 
 	"gospy/pkg/proc"
@@ -170,6 +172,18 @@ func main() {
 				if err := p.DumpHeap(nonblocking); err != nil {
 					return err
 				}
+				return nil
+			},
+		},
+		{
+			Name:  "web",
+			Usage: "visualize go runtime",
+			Flags: []cli.Flag{binFlag, pidFlag, nonblockingFlag},
+			Action: func(c *cli.Context) error {
+				fs := http.FileServer(http.Dir("./web/"))
+				log.Println("Listening on:8080")
+				http.Handle("/", fs)
+				http.ListenAndServe(":8080", nil)
 				return nil
 			},
 		},
