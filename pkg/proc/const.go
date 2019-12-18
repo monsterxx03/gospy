@@ -59,60 +59,6 @@ var gstatusStrings = [...]string{
 	gscanwaiting:     "scanwaiting",
 }
 
-// from runtime/runtime2.go
-const (
-	waitReasonZero                  gwaitReason = iota // ""
-	waitReasonGCAssistMarking                          // "GC assist marking"
-	waitReasonIOWait                                   // "IO wait"
-	waitReasonChanReceiveNilChan                       // "chan receive (nil chan)"
-	waitReasonChanSendNilChan                          // "chan send (nil chan)"
-	waitReasonDumpingHeap                              // "dumping heap"
-	waitReasonGarbageCollection                        // "garbage collection"
-	waitReasonGarbageCollectionScan                    // "garbage collection scan"
-	waitReasonPanicWait                                // "panicwait"
-	waitReasonSelect                                   // "select"
-	waitReasonSelectNoCases                            // "select (no cases)"
-	waitReasonGCAssistWait                             // "GC assist wait"
-	waitReasonGCSweepWait                              // "GC sweep wait"
-	waitReasonChanReceive                              // "chan receive"
-	waitReasonChanSend                                 // "chan send"
-	waitReasonFinalizerWait                            // "finalizer wait"
-	waitReasonForceGGIdle                              // "force gc (idle)"
-	waitReasonSemacquire                               // "semacquire"
-	waitReasonSleep                                    // "sleep"
-	waitReasonSyncCondWait                             // "sync.Cond.Wait"
-	waitReasonTimerGoroutineIdle                       // "timer goroutine (idle)"
-	waitReasonTraceReaderBlocked                       // "trace reader (blocked)"
-	waitReasonWaitForGCCycle                           // "wait for GC cycle"
-	waitReasonGCWorkerIdle                             // "GC worker (idle)"
-)
-
-var gwaitReasonStrings = [...]string{
-	waitReasonZero:                  "",
-	waitReasonGCAssistMarking:       "GC assist marking",
-	waitReasonIOWait:                "IO wait",
-	waitReasonChanReceiveNilChan:    "chan receive (nil chan)",
-	waitReasonChanSendNilChan:       "chan send (nil chan)",
-	waitReasonDumpingHeap:           "dumping heap",
-	waitReasonGarbageCollection:     "garbage collection",
-	waitReasonGarbageCollectionScan: "garbage collection scan",
-	waitReasonPanicWait:             "panicwait",
-	waitReasonSelect:                "select",
-	waitReasonSelectNoCases:         "select (no cases)",
-	waitReasonGCAssistWait:          "GC assist wait",
-	waitReasonGCSweepWait:           "GC sweep wait",
-	waitReasonChanReceive:           "chan receive",
-	waitReasonChanSend:              "chan send",
-	waitReasonFinalizerWait:         "finalizer wait",
-	waitReasonForceGGIdle:           "force gc (idle)",
-	waitReasonSemacquire:            "semacquire",
-	waitReasonSleep:                 "sleep",
-	waitReasonSyncCondWait:          "sync.Cond.Wait",
-	waitReasonTimerGoroutineIdle:    "timer goroutine (idle)",
-	waitReasonTraceReaderBlocked:    "trace reader (blocked)",
-	waitReasonWaitForGCCycle:        "wait for GC cycle",
-	waitReasonGCWorkerIdle:          "GC worker (idle)",
-}
 
 // from: man proc
 var threadStateStrings = map[string]string{
@@ -162,15 +108,6 @@ func (s gstatus) String() string {
 		return fmt.Sprintf("unknown goroutine status %d", s)
 	}
 	return gstatusStrings[s]
-}
-
-type gwaitReason uint8
-
-func (w gwaitReason) String() string {
-	if w < 0 || w >= gwaitReason(len(gwaitReasonStrings)) {
-		return "unknown wait reason"
-	}
-	return gwaitReasonStrings[w]
 }
 
 type mspanstate uint8

@@ -88,7 +88,11 @@ func main() {
 				for _, g := range gs {
 					status := g.Status.String()
 					if g.Waiting() {
-						status = "waiting for " + g.WaitReason.String()
+						r, err := g.GetWaitReason()
+						if err != nil {
+							return err
+						}
+						status = "waiting for " + r
 					}
 					if g.M == nil {
 						fmt.Printf("%d - %s: %s %s \n", g.ID, status, g.GetLocation(pcType).String(), g.WaitingSudog)

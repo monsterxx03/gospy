@@ -92,7 +92,7 @@ func (h *HChan) Parse(addr uint64) error {
 }
 
 func (h *HChan) String() string {
-	return fmt.Sprintf("elemsize: %d, elemtype: %s, addr: %d", h.ElemSize, h.ElemType, h.Addr())
+	return fmt.Sprintf("elemsize: %d, elemtype: %s, dataqsize: %d, addr: %d", h.ElemSize, h.ElemType, h.DataqSize, h.Addr())
 }
 
 // G is runtime.g struct parsed from process memory and binary dwarf
@@ -111,6 +111,14 @@ type G struct {
 	UserLoc      *gbin.Location // location of user code, a subset of CurLoc
 	GoLoc        *gbin.Location // location of `go` statement that spawed this goroutine
 	StartLoc     *gbin.Location // location of goroutine start function
+}
+
+func (g *G) GetWaitReason() (string, error) {
+	version, err := g.Process().GoVersion()
+	if err != nil {
+		return "", err
+	}
+	return getWaitReasonMap(version)[g.WaitReason], nil
 }
 
 func (g *G) StackSize() uint64 {
