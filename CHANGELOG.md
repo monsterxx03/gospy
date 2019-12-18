@@ -1,3 +1,8 @@
+## 0.4.0 (next)
+- Show related channel info when goroutine is waiting for chan or select
+- Fix waitreason in 1.13("GC scavenge wait" added) 
+- Fix summary height on top ui
+
 ## 0.3.0
 
 - Refactor to make struct tags support more runtime types

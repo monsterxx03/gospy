@@ -30,26 +30,26 @@ learned a lot from [delve](https://github.com/go-delve/delve)
 
     goroutines:
 
-    1 - waiting for chan receive: main (/usr/local/go/src/runtime/proc.go:110)
+
+    1 - waiting for chan receive: main (/usr/local/go/src/runtime/proc.go:110) <- make(chan interface(16), 10)
     2 - waiting for force gc (idle): forcegchelper (/usr/local/go/src/runtime/proc.go:242)
     3 - waiting for GC sweep wait: bgsweep (/usr/local/go/src/runtime/mgcsweep.go:64)
-    7(M8)- syscall: timerproc (/usr/local/go/src/runtime/time.go:247)
-    8 - waiting for select: start (/app/vendor/go.opencensus.io/stats/view/worker.go:149)
-    14 - waiting for GC worker (idle): gcBgMarkWorker (/usr/local/go/src/runtime/mgc.go:1807)
-    15 - waiting for GC worker (idle): gcBgMarkWorker (/usr/local/go/src/runtime/mgc.go:1807)
+    4(M3)- syscall: loop (/usr/local/go/src/os/signal/signal_unix.go:21)
+    12 - waiting for GC worker (idle): gcBgMarkWorker (/usr/local/go/src/runtime/mgc.go:1807)
+    13 - waiting for GC worker (idle): gcBgMarkWorker (/usr/local/go/src/runtime/mgc.go:1807)
     17 - waiting for finalizer wait: runfinq (/usr/local/go/src/runtime/mfinal.go:161)
-    19(M4)- syscall: loop (/usr/local/go/src/os/signal/signal_unix.go:21)
-    26 - waiting for GC worker (idle): gcBgMarkWorker (/usr/local/go/src/runtime/mgc.go:1807)
-    27 - waiting for GC worker (idle): gcBgMarkWorker (/usr/local/go/src/runtime/mgc.go:1807)
-    28 - waiting for GC worker (idle): gcBgMarkWorker (/usr/local/go/src/runtime/mgc.go:1807)
-    36 - waiting for GC worker (idle): gcBgMarkWorker (/usr/local/go/src/runtime/mgc.go:1807)
-    49 - waiting for GC worker (idle): gcBgMarkWorker (/usr/local/go/src/runtime/mgc.go:1807)
-    50 - waiting for GC worker (idle): gcBgMarkWorker (/usr/local/go/src/runtime/mgc.go:1807)
-    51(M7)- syscall: timerproc (/usr/local/go/src/runtime/time.go:247)
-    52 - waiting for select: func1 (/app/vendor/github.com/oklog/run/group.go:37)
-    53 - waiting for chan receive: func1 (/app/vendor/github.com/oklog/run/group.go:37)
-    54 - waiting for chan receive: func1 (/app/vendor/github.com/oklog/run/group.go:37)
-    ...
+    23 - waiting for GC worker (idle): gcBgMarkWorker (/usr/local/go/src/runtime/mgc.go:1807)
+    35(M6)- syscall: timerproc (/usr/local/go/src/runtime/time.go:247)
+    36 - waiting for select: start (/app/vendor/go.opencensus.io/stats/view/worker.go:149) select <- make(chan struct(24), 1)
+    41 - waiting for GC worker (idle): gcBgMarkWorker (/usr/local/go/src/runtime/mgc.go:1807)
+    42 - waiting for GC worker (idle): gcBgMarkWorker (/usr/local/go/src/runtime/mgc.go:1807)
+    43 - waiting for GC worker (idle): gcBgMarkWorker (/usr/local/go/src/runtime/mgc.go:1807)
+    90(M12)- syscall: timerproc (/usr/local/go/src/runtime/time.go:247)
+    91 - waiting for select: sender (/app/discovery/manager.go:251) select <- make(chan struct(24), 1)
+    92 - waiting for select: watcher (/app/vendor/google.golang.org/grpc/balancer_conn_wrappers.go:113) select <- make(chan ptr(8), 1)
+    93 - waiting for chan receive: 1 (/app/prompb/rpc.pb.gw.go:91) <- make(chan struct(0), 0)
+    94 - waiting for chan receive: func3 (/app/web/web.go:513) <- make(chan interface(16), 1024)
+    95 - waiting for chan receive: func4 (/app/web/web.go:516) <- make(chan interface(16), 1024)
 
 
 If you know something about golang's GMP scheduling model, following may be instresting:
