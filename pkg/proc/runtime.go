@@ -4,6 +4,7 @@ package proc
 import (
 	"fmt"
 	gbin "gospy/pkg/binary"
+	"strings"
 )
 
 type common struct {
@@ -68,7 +69,10 @@ type Sudog struct {
 }
 
 func (s *Sudog) String() string {
-	return fmt.Sprintf("isSelect %t, chan: %+v", s.IsSelect, s.C)
+	if s.IsSelect {
+		return fmt.Sprintf("select <- %s", s.C)
+	}
+	return fmt.Sprintf("<-> %s", s.C)
 }
 
 func (s *Sudog) Parse(addr uint64) error {
@@ -92,7 +96,7 @@ func (h *HChan) Parse(addr uint64) error {
 }
 
 func (h *HChan) String() string {
-	return fmt.Sprintf("elemsize: %d, elemtype: %s, dataqsize: %d, addr: %d", h.ElemSize, h.ElemType, h.DataqSize, h.Addr())
+	return fmt.Sprintf("make(chan %s(%d), %d)", h.ElemType, h.ElemSize, h.DataqSize)
 }
 
 // G is runtime.g struct parsed from process memory and binary dwarf
@@ -119,6 +123,26 @@ func (g *G) GetWaitReason() (string, error) {
 		return "", err
 	}
 	return getWaitReasonMap(version)[g.WaitReason], nil
+}
+
+func (g *G) GetWaitingChan() (string, error) {
+	if g.WaitingSudog != nil {
+		if g.WaitingSudog.IsSelect {
+			return "select <- " + g.WaitingSudog.C.String(), nil
+		}
+		reason, err := g.GetWaitReason()
+		if err != nil {
+			return "", err
+		}
+		if strings.Contains(reason, "chan receive") {
+			return "<- " + g.WaitingSudog.C.String(), nil
+		}
+		if strings.Contains(reason, "chan send") {
+			return "-> " + g.WaitingSudog.C.String(), nil
+		}
+		return g.WaitingSudog.C.String(), nil
+	}
+	return "", nil
 }
 
 func (g *G) StackSize() uint64 {

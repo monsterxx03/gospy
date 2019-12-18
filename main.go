@@ -87,17 +87,22 @@ func main() {
 				fmt.Print("goroutines:\n\n")
 				for _, g := range gs {
 					status := g.Status.String()
+					chanStr := ""
 					if g.Waiting() {
 						r, err := g.GetWaitReason()
 						if err != nil {
 							return err
 						}
 						status = "waiting for " + r
+						chanStr, err = g.GetWaitingChan()
+						if err != nil {
+							return err
+						}
 					}
 					if g.M == nil {
-						fmt.Printf("%d - %s: %s %s \n", g.ID, status, g.GetLocation(pcType).String(), g.WaitingSudog)
+						fmt.Printf("%d - %s: %s %s \n", g.ID, status, g.GetLocation(pcType).String(), chanStr)
 					} else {
-						fmt.Printf("%d(M%d)- %s: %s %s \n", g.ID, g.M.ID, status, g.GetLocation(pcType).String(), g.WaitingSudog)
+						fmt.Printf("%d(M%d)- %s: %s %s \n", g.ID, g.M.ID, status, g.GetLocation(pcType).String(), chanStr)
 					}
 				}
 				return nil
