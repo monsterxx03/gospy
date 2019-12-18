@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"reflect"
 )
 
 const (
@@ -47,29 +48,29 @@ type Binary struct {
 	StrtMap map[string]*Strt // get strrt by name
 
 	// following fields are parsed from binary dwarf during starting
-	GoVerAddr           uint64 // parsed vma of runtime.buildVersion
-	RuntimeInitTimeAddr uint64 // parsed runtime.runtimeInitTime
-	GStruct             *Strt  // parsed runtime.g struct
-	MStruct             *Strt  // parsed runtime.m struct
-	PStruct             *Strt  // parsed runtime.p struct
-	GobufStruct         *Strt  // parsed runtime.gobuf struct
-	SchedtStruct        *Strt  // parsed runtime.schedt struct
-	MStatsStruct        *Strt  // parsed runtime.mstats struct
-	MSpanStruct         *Strt  // parsed runtime.mspan struct
-	MCentralStruct      *Strt  // parsed runtime.mcentral struct
-	MHeapStruct         *Strt  //parsed runtime.mheap struct
-	MCacheStruct        *Strt  // parsed runtime.mcache struct
-	StackStruct         *Strt  // parsed runtime.stack struct
-	SchedAddr           uint64 // parsed vma of runtime.sched
-	AllglenAddr         uint64 // parsed vma of runtime.allglen
-	AllgsAddr           uint64 // parsed vma of runtime.allgs
-	AllpAddr            uint64 // parsed vma of runtime.allp
-	GomaxprocsAddr      uint64 // parsed vma of runtime.gomaxprocs
-	MStatsAddr          uint64 // parsed vma of runtime.memstats
-	MHeapAddr           uint64 // parsed vma of runtime.mheap_
-	SudogStruct         *Strt  //parsed runtime.sudog struct
-	HChanStruct         *Strt  // parsed runtime.hchan struct
-	TypeStruct          *Strt  // parsed runtime._type struct
+	GoVerAddr           uint64 `name:"runtime.buildVersion"`    // parsed vma of runtime.buildVersion
+	RuntimeInitTimeAddr uint64 `name:"runtime.runtimeInitTime"` // parsed runtime.runtimeInitTime
+	GStruct             *Strt  `name:"runtime.g"`               // parsed runtime.g struct
+	MStruct             *Strt  `name:"runtime.m"`               // parsed runtime.m struct
+	PStruct             *Strt  `name:"runtime.p"`               // parsed runtime.p struct
+	GobufStruct         *Strt  `name:"runtime.gobuf"`           // parsed runtime.gobuf struct
+	SchedtStruct        *Strt  `name:"runtime.schedt"`          // parsed runtime.schedt struct
+	MStatsStruct        *Strt  `name:"runtime.mstats"`          // parsed runtime.mstats struct
+	MSpanStruct         *Strt  `name:"runtime.mspan"`           // parsed runtime.mspan struct
+	MCentralStruct      *Strt  `name:"runtime.mcentral"`        // parsed runtime.mcentral struct
+	MHeapStruct         *Strt  `name:"runtime.mheap"`           // parsed runtime.mheap struct
+	MCacheStruct        *Strt  `name:"runtime.mcache"`          // parsed runtime.mcache struct
+	StackStruct         *Strt  `name:"runtime.stack"`           // parsed runtime.stack struct
+	SchedAddr           uint64 `name:"runtime.sched"`           // parsed vma of runtime.sched
+	AllglenAddr         uint64 `name:"runtime.allglen"`         // parsed vma of runtime.allglen
+	AllgsAddr           uint64 `name:"runtime.allgs"`           // parsed vma of runtime.allgs
+	AllpAddr            uint64 `name:"runtime.allp"`            // parsed vma of runtime.allp
+	GomaxprocsAddr      uint64 `name:"runtime.gomaxprocs"`      // parsed vma of runtime.gomaxprocs
+	MStatsAddr          uint64 `name:"runtime.memstats"`        // parsed vma of runtime.memstats
+	MHeapAddr           uint64 `name:"runtime.mheap_"`          // parsed vma of runtime.mheap_
+	SudogStruct         *Strt  `name:"runtime.sudog"`           // parsed runtime.sudog struct
+	HChanStruct         *Strt  `name:"runtime.hchan"`           // parsed runtime.hchan struct
+	TypeStruct          *Strt  `name:"runtime._type"`           // parsed runtime._type struct
 }
 
 // Strt is a abstruct struct parsed from dwarf info
@@ -123,73 +124,43 @@ func Load(path string) (*Binary, error) {
 
 // Initialize will pre parse some info from elf binary
 func (b *Binary) Initialize() error {
-	result, err := b.Parse(
-		&unit{"runtime.g", UTYPE_STRUCT},
-		&unit{"runtime.m", UTYPE_STRUCT},
-		&unit{"runtime.p", UTYPE_STRUCT},
-		&unit{"runtime.allglen", UTYPE_VAR},
-		&unit{"runtime.sched", UTYPE_VAR},
-		&unit{"runtime.gobuf", UTYPE_STRUCT},
-		&unit{"runtime.schedt", UTYPE_STRUCT},
-		&unit{"runtime.allgs", UTYPE_VAR},
-		&unit{"runtime.allp", UTYPE_VAR},
-		&unit{"runtime.buildVersion", UTYPE_VAR},
-		&unit{"runtime.gomaxprocs", UTYPE_VAR},
-		&unit{"runtime.mstats", UTYPE_STRUCT},
-		&unit{"runtime.memstats", UTYPE_VAR},
-		&unit{"runtime.runtimeInitTime", UTYPE_VAR},
-		&unit{"runtime.mspan", UTYPE_STRUCT},
-		&unit{"runtime.mheap", UTYPE_STRUCT},
-		&unit{"runtime.mheap_", UTYPE_VAR},
-		&unit{"runtime.mcentral", UTYPE_STRUCT},
-		&unit{"runtime.mcache", UTYPE_STRUCT},
-		&unit{"runtime.stack", UTYPE_STRUCT},
-		&unit{"runtime.sudog", UTYPE_STRUCT},
-		&unit{"runtime.hchan", UTYPE_STRUCT},
-		&unit{"runtime._type", UTYPE_STRUCT},
-	)
+	t := reflect.TypeOf(b).Elem()
+	v := reflect.ValueOf(b).Elem()
+	toParse := make([]*unit, 0)
+	nameMap := make(map[string]string) // tagName to fieldName
+	// use reflect to find all fields with `name` tag, they're to be parsed
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		tagName := field.Tag.Get("name")
+		if tagName != "" {
+			switch field.Type.Kind() {
+			case reflect.Ptr:
+				toParse = append(toParse, &unit{tagName, UTYPE_STRUCT})
+			case reflect.Uint64:
+				toParse = append(toParse, &unit{tagName, UTYPE_VAR})
+			default:
+				return fmt.Errorf("unsupport field +%v", field)
+			}
+			nameMap[tagName] = field.Name
+		}
+	}
+	// parse  field with `name` field
+	result, err := b.Parse(toParse...)
 	if err != nil {
 		return err
 	}
 	b.StrtMap = make(map[string]*Strt)
-
-	b.GStruct = result["runtime.g"].(*Strt)
-	b.StrtMap["runtime.g"] = b.GStruct
-	b.MStruct = result["runtime.m"].(*Strt)
-	b.StrtMap["runtime.m"] = b.MStruct
-	b.PStruct = result["runtime.p"].(*Strt)
-	b.StrtMap["runtime.p"] = b.PStruct
-	b.AllglenAddr = result["runtime.allglen"].(uint64)
-	b.SchedAddr = result["runtime.sched"].(uint64)
-	b.GobufStruct = result["runtime.gobuf"].(*Strt)
-	b.StrtMap["runtime.gobuf"] = b.GobufStruct
-	b.SchedtStruct = result["runtime.schedt"].(*Strt)
-	b.StrtMap["runtime.schedt"] = b.SchedtStruct
-	b.AllgsAddr = result["runtime.allgs"].(uint64)
-	b.AllpAddr = result["runtime.allp"].(uint64)
-	b.GoVerAddr = result["runtime.buildVersion"].(uint64)
-	b.GomaxprocsAddr = result["runtime.gomaxprocs"].(uint64)
-	b.MStatsStruct = result["runtime.mstats"].(*Strt)
-	b.StrtMap["runtime.mstats"] = b.MStatsStruct
-	b.MStatsAddr = result["runtime.memstats"].(uint64)
-	b.RuntimeInitTimeAddr = result["runtime.runtimeInitTime"].(uint64)
-	b.MHeapAddr = result["runtime.mheap_"].(uint64)
-	b.MHeapStruct = result["runtime.mheap"].(*Strt)
-	b.StrtMap["runtime.mheap"] = b.MHeapStruct
-	b.MSpanStruct = result["runtime.mspan"].(*Strt)
-	b.StrtMap["runtime.mspan"] = b.MSpanStruct
-	b.MCentralStruct = result["runtime.mcentral"].(*Strt)
-	b.StrtMap["runtime.mcentral"] = b.MCentralStruct
-	b.MCacheStruct = result["runtime.mcache"].(*Strt)
-	b.StrtMap["runtime.mcache"] = b.MCacheStruct
-	b.StackStruct = result["runtime.stack"].(*Strt)
-	b.StrtMap["runtime.stack"] = b.StackStruct
-	b.SudogStruct = result["runtime.sudog"].(*Strt)
-	b.StrtMap["runtime.sudog"] = b.SudogStruct
-	b.HChanStruct = result["runtime.hchan"].(*Strt)
-	b.StrtMap["runtime.hchan"] = b.HChanStruct
-	b.TypeStruct = result["runtime._type"].(*Strt)
-	b.StrtMap["runtime._type"] = b.TypeStruct
+	// set value
+	for tagName, _v := range result {
+		fieldName := nameMap[tagName]
+		field := v.FieldByName(fieldName)
+		field.Set(reflect.ValueOf(_v))
+		strt, ok := _v.(*Strt)
+		if ok {
+			// register parsed struct
+			b.StrtMap[tagName] = strt
+		}
+	}
 	return nil
 }
 
