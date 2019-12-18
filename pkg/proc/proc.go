@@ -45,6 +45,9 @@ func (s *PSummary) TotalPauseTime() time.Duration {
 }
 
 func (s *PSummary) LastGC() time.Duration {
+	if s.MemStat.LastGC == 0 {
+		return 0
+	}
 	return time.Duration(time.Now().UnixNano() - int64(s.MemStat.LastGC)).Round(time.Millisecond)
 }
 

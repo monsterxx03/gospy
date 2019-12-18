@@ -13,7 +13,7 @@ type MCache struct {
 
 	LargeFree  uint64 `name:"local_largefree"`  // bytes freed for large objects (>maxsmallsize)
 	NLargeFree uint64 `name:"local_nlargefree"` // number of frees for large objects (>maxsmallsize)
-	FlushGen   uint32 `name:"flushGen"`
+	FlushGen   uint32 `name:"flushGen"`         // added on 1.12
 }
 
 type smallsize struct {

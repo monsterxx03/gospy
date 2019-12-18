@@ -61,6 +61,10 @@ func parse(baseAddr uint64, obj GoStructer) error {
 		name := tfield.Tag.Get("name")
 		if name != "" {
 			strtField := members[name]
+			if strtField == nil {
+				// fmt.Println("skip ", obj.BinStrt().Name, name)
+				continue
+			}
 			addr := uint64(strtField.StrtOffset)
 			size := uint64(strtField.Size)
 			bstrt, err := getBinStrtFromField(p, tfield)
