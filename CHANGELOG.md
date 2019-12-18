@@ -1,7 +1,9 @@
 ## 0.4.0 (next)
-- Show related channel info when goroutine is waiting for chan or select
-- Fix waitreason in 1.13("GC scavenge wait" added) 
-- Fix summary height on top ui
+- Show related channel info when goroutine is sending/receiving/select chan
+- Fix: waitreason in 1.13("GC scavenge wait" added)
+- Fix: summary height on top ui
+- Fix: avoid crash on <1.12, since flushGen is added on 1.12
+- Refactor: use reflect to do Binary.Initialize
 
 ## 0.3.0
 
