@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strconv"
 
 	"github.com/golang/glog"
 	"github.com/olekukonko/tablewriter"
@@ -99,7 +98,7 @@ func main() {
 					if err != nil {
 						return err
 					}
-					row := []string{strconv.Itoa(int(s.ID)), s.Status, s.WaitReason, s.Loc}
+					row := []string{s.ID, s.Status, s.WaitReason, s.Loc}
 					if noColor {
 						table.Append(row)
 						continue

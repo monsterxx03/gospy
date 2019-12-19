@@ -2,6 +2,7 @@ package proc
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	gbin "gospy/pkg/binary"
@@ -52,8 +53,7 @@ func (h *HChan) String() string {
 }
 
 type GSummary struct {
-	ID         uint64
-	MID        uint64
+	ID         string
 	Status     string
 	WaitReason string
 	Loc        string
@@ -78,7 +78,7 @@ type G struct {
 }
 
 func (g *G) Summary(pcType string) (*GSummary, error) {
-	var status, chanStr, reason string
+	var id, status, chanStr, reason string
 	var err error
 	chanStr, err = g.GetWaitingChan()
 	if err != nil {
@@ -99,14 +99,16 @@ func (g *G) Summary(pcType string) (*GSummary, error) {
 			reason = chanStr
 		}
 	}
+	if g.M != nil {
+		id = fmt.Sprintf("%d(M%d)", g.ID, g.M.ID)
+	} else {
+		id = strconv.Itoa(int(g.ID))
+	}
 	s := &GSummary{
-		ID:         g.ID,
+		ID:         id,
 		Status:     status,
 		WaitReason: reason,
 		Loc:        g.GetLocation(pcType).String(),
-	}
-	if g.M != nil {
-		s.MID = g.M.ID
 	}
 	return s, nil
 }
