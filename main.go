@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 
 	"github.com/golang/glog"
+	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
 
 	"gospy/pkg/proc"
@@ -85,26 +87,32 @@ func main() {
 					return gs[i].ID < gs[j].ID
 				})
 				fmt.Print("goroutines:\n\n")
+				table := tablewriter.NewWriter(os.Stdout)
+				table.SetBorder(false)
+				table.SetAutoWrapText(false)
+				table.SetColumnSeparator("")
+				// table.SetAlignment(tablewriter.ALIGN_RIGHT)
 				for _, g := range gs {
-					status := g.Status.String()
-					chanStr := ""
-					if g.Waiting() {
-						r, err := g.GetWaitReason()
-						if err != nil {
-							return err
-						}
-						status = "waiting for " + r
-						chanStr, err = g.GetWaitingChan()
-						if err != nil {
-							return err
-						}
+					s, err := g.Summary(pcType)
+					if err != nil {
+						return err
 					}
-					if g.M == nil {
-						fmt.Printf("%d - %s: %s %s \n", g.ID, status, g.GetLocation(pcType).String(), chanStr)
+					row := []string{strconv.Itoa(int(s.ID)), s.Status, s.WaitReason, s.Loc}
+					color := tablewriter.Colors{}
+					if g.Running() {
+						color = tablewriter.Colors{tablewriter.FgGreenColor}
+					} else if g.Waiting() {
+						color = tablewriter.Colors{tablewriter.FgYellowColor}
+					} else if g.Syscall() {
+						color = tablewriter.Colors{tablewriter.FgBlueColor}
 					} else {
-						fmt.Printf("%d(M%d)- %s: %s %s \n", g.ID, g.M.ID, status, g.GetLocation(pcType).String(), chanStr)
+						color = tablewriter.Colors{tablewriter.FgWhiteColor}
 					}
+					table.Rich(row, []tablewriter.Colors{
+						color, color, color, color,
+					})
 				}
+				table.Render()
 				return nil
 			},
 		},
