@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"sort"
 
-	"github.com/golang/glog"
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
 
@@ -186,7 +186,6 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		glog.Error(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }

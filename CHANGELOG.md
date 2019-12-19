@@ -1,4 +1,5 @@
-## 0.4.0 (next)
+## 0.4.0
+- Enhance summary output 
 - Show related channel info when goroutine is sending/receiving/select chan
 - Fix: waitreason in 1.13("GC scavenge wait" added)
 - Fix: summary height on top ui
