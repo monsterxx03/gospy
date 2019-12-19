@@ -68,7 +68,8 @@ func main() {
 			Name:    "summary",
 			Aliases: []string{"s"},
 			Usage:   "Dump go process internal summary",
-			Flags:   []cli.Flag{binFlag, pidFlag, nonblockingFlag, pcFlag},
+			Flags: []cli.Flag{binFlag, pidFlag, nonblockingFlag, pcFlag,
+				cli.BoolFlag{Name: "no-color", Usage: "Don't colorful output"}},
 			Action: func(c *cli.Context) error {
 				if err := validPC(pcType); err != nil {
 					return err
@@ -91,6 +92,7 @@ func main() {
 				table.SetBorder(false)
 				table.SetAutoWrapText(false)
 				table.SetColumnSeparator("")
+				noColor := c.Bool("no-color")
 				// table.SetAlignment(tablewriter.ALIGN_RIGHT)
 				for _, g := range gs {
 					s, err := g.Summary(pcType)
@@ -98,6 +100,10 @@ func main() {
 						return err
 					}
 					row := []string{strconv.Itoa(int(s.ID)), s.Status, s.WaitReason, s.Loc}
+					if noColor {
+						table.Append(row)
+						continue
+					}
 					color := tablewriter.Colors{}
 					if g.Running() {
 						color = tablewriter.Colors{tablewriter.FgGreenColor}
