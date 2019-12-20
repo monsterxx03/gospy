@@ -1,6 +1,8 @@
 package proc
 
 import (
+	"encoding/json"
+	"fmt"
 	"sort"
 )
 
@@ -60,14 +62,28 @@ func (c *MCache) Parse(addr uint64) error {
 // P (processor) is runtime.p struct
 type P struct {
 	common
-	ID          int32   `name:"id"`
-	Status      pstatus `name:"status"`
-	Schedtick   uint32  `name:"schedtick"`
-	Syscalltick uint32  `name:"syscalltick"`
-	M           *M      `name:"m" binStrt:"runtime.m"`
-	MCache      *MCache `name:"mcache" binStrt:"runtime.mcache"`
-	Runq        []byte  `name:"runq"`
-	Runqsize    int
+	ID          int32   `name:"id" json:"id"`
+	Status      pstatus `name:"status" json:"status"`
+	Schedtick   uint32  `name:"schedtick" json:"schedtick"`
+	Syscalltick uint32  `name:"syscalltick" json:"syscalltick"`
+	M           *M      `name:"m" binStrt:"runtime.m" json:"m"`
+	MCache      *MCache `name:"mcache" binStrt:"runtime.mcache" json:"-"`
+	Runq        []byte  `name:"runq" json:"-"`
+	LocalGQ     []*G   `json:"localgq"`
+	Runqsize    int `json:"runqsize"`
+}
+
+func (p *P) MarshalJSON() ([]byte, error) {
+	type Alias P
+	return json.Marshal(&struct {
+		Name string `json:"name"`
+		Status string `json:"status"`
+		*Alias
+	}{
+		Name: fmt.Sprintf("P%d", p.ID),
+		Status: p.Status.String(),
+		Alias: (*Alias)(p),
+	})
 }
 
 func (p *P) Parse(addr uint64) error {
@@ -86,6 +102,7 @@ func (p *P) Parse(addr uint64) error {
 				return err
 			}
 			if !g.Dead() {
+				p.LocalGQ = append(p.LocalGQ, g)
 				runqsize++
 			}
 		}

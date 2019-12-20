@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"encoding/json"
 
 	"github.com/olekukonko/tablewriter"
 
@@ -182,7 +183,30 @@ func main() {
 			Action: func(c *cli.Context) error {
 				fs := http.FileServer(http.Dir("./web/"))
 				log.Println("Listening on:8080")
+				errorHandle := func(w http.ResponseWriter, err error) {
+					log.Println(err)
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
 				http.Handle("/", fs)
+				http.HandleFunc("/runtime/ps", func(w http.ResponseWriter, r *http.Request) {
+					process, err := proc.New(pid, bin)
+					if err != nil {
+						errorHandle(w, err)
+						return
+					}
+					ps, err := process.GetPs(!nonblocking)
+					if err != nil {
+						errorHandle(w, err)
+						return
+					}
+					w.Header().Set("Content-Type", "application/json")
+					data, err := json.Marshal(ps)
+					if err !=nil {
+						errorHandle(w, err)
+						return
+					}
+					w.Write(data)
+				})
 				http.ListenAndServe(":8080", nil)
 				return nil
 			},

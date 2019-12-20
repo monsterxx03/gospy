@@ -1,6 +1,7 @@
 package proc
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -62,19 +63,36 @@ type GSummary struct {
 // G is runtime.g struct parsed from process memory and binary dwarf
 type G struct {
 	common
-	Stack        stack          `name:"stack" binStrt:"runtime.stack"`
-	ID           uint64         `name:"goid"`         // goid
-	Status       gstatus        `name:"atomicstatus"` // atomicstatus
-	WaitReason   gwaitReason    `name:"waitreason"`   // if Status ==Gwaiting
-	Sched        Gobuf          `name:"sched" binStrt:"runtime.gobuf"`
-	Startpc      uint64         `name:"startpc"`
-	Gopc         uint64         `name:"gopc"`
+	Stack        stack          `name:"stack" binStrt:"runtime.stack" json:"-"`
+	ID           uint64         `name:"goid" json:"id"`
+	Status       gstatus        `name:"atomicstatus" json:"status"`
+	WaitReason   gwaitReason    `name:"waitreason" json:"waitreason"`   // if Status ==Gwaiting
+	Sched        Gobuf          `name:"sched" binStrt:"runtime.gobuf" json:"-"`
+	Startpc      uint64         `name:"startpc" json:"-"`
+	Gopc         uint64         `name:"gopc" json:"-"`
 	M            *M             `name:"m" binStrt:"runtime.m"` // hold worker thread info
-	WaitingSudog *Sudog         `name:"waiting" binStrt:"runtime.sudog"`
-	CurLoc       *gbin.Location // runtime location
-	UserLoc      *gbin.Location // location of user code, a subset of CurLoc
-	GoLoc        *gbin.Location // location of `go` statement that spawed this goroutine
-	StartLoc     *gbin.Location // location of goroutine start function
+	WaitingSudog *Sudog         `name:"waiting" binStrt:"runtime.sudog" json:"-"`
+	CurLoc       *gbin.Location `json:"-"` // runtime location
+	UserLoc      *gbin.Location `json:"-"` // location of user code, a subset of CurLoc
+	GoLoc        *gbin.Location `json:"-"` // location of `go` statement that spawed this goroutine
+	StartLoc     *gbin.Location  `json:"-"`// location of goroutine start function
+}
+
+func (g *G) MarshalJSON() ([]byte, error) {
+	type Alias G
+	wr, err := g.GetWaitReason()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(&struct{
+		Status string `json:"status"`
+		WaitReason string `json:"waitreason"`
+		*Alias
+	}{
+		Status: g.Status.String(),
+		WaitReason: wr,
+		Alias: (*Alias)(g),
+	})
 }
 
 func (g *G) Summary(pcType string) (*GSummary, error) {
