@@ -90,10 +90,11 @@ tested:
 - [x] 1.11.X
 - [x] 1.12.X 
 - [x] 1.13.X
+- [x] 1.14.X
 
 ## Build from source
 
-Minium go version to build: 1.12.0
+Minium go version to build: 1.13.0
 
 git clone https://github.com/monsterxx03/gospy.git
 
