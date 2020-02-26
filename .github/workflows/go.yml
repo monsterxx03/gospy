@@ -31,6 +31,6 @@ jobs:
         go-version: ${{ matrix.gospy_go_version }}
     
     - name: Test
-      run: make
+      run: make test
       env:
         E2E_GO_VERSION: ${{ matrix.e2e_go_version }}
