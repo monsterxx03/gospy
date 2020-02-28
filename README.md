@@ -142,7 +142,7 @@ You can compile a binary with debug info and specify the `--bin` option. Ensure 
 
 Yes :)
 
-### Debug process running in k8s pod?
+#### Debug process running in k8s pod?
 
 - kubectl cp bin/gospy pod-xxx:/tmp/gospy
 - kubectl exec -it pod-xxx -- /tmp/gospy top --pid 1
