@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"reflect"
 
-	gbin "gospy/pkg/binary"
+	gbin "github.com/monsterxx03/gospy/pkg/binary"
 )
 
 // return a slice of ptr addr

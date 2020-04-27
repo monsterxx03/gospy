@@ -9,8 +9,8 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/urfave/cli"
 
-	"gospy/pkg/proc"
-	"gospy/pkg/term"
+	"github.com/monsterxx03/gospy/pkg/proc"
+	"github.com/monsterxx03/gospy/pkg/term"
 )
 
 var (

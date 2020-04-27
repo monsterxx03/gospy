@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	gbin "gospy/pkg/binary"
+	gbin "github.com/monsterxx03/gospy/pkg/binary"
 )
 
 type stack struct {

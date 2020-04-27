@@ -8,7 +8,7 @@ import (
 	ui "github.com/gizak/termui/v3"
 	"github.com/gizak/termui/v3/widgets"
 
-	"gospy/pkg/proc"
+	"github.com/monsterxx03/gospy/pkg/proc"
 )
 
 const (

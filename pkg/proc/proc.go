@@ -11,7 +11,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	gbin "gospy/pkg/binary"
+	gbin "github.com/monsterxx03/gospy/pkg/binary"
 )
 
 // PSummary holds process summary info
