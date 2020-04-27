@@ -147,6 +147,27 @@ Yes :)
 - kubectl cp bin/gospy pod-xxx:/tmp/gospy
 - kubectl exec -it pod-xxx -- /tmp/gospy top --pid 1
 
+### Use as a lib
+
+go get github.com/monsterxx03/gospy
+
+    
+    import (
+        "fmt"
+        "github.com/monsterxx03/gospy/pkg/proc"
+    )
+
+    func main() {
+        p, _ := proc.New(14791, "")
+        ver, _ := p.GoVersion()
+        fmt.Println(ver) // print target process go version
+        sum, _ := p.Summary(true)
+        fmt.Println(sum)
+        for _, g := range sum.Gs {
+            fmt.Println(g)
+        }
+    }
+
 ## TODO
 
 - Support dump more variable types
