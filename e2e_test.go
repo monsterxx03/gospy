@@ -7,7 +7,7 @@ import (
 	"syscall"
 	"testing"
 
-	"gospy/pkg/proc"
+	"github.com/monsterxx03/gospy/pkg/proc"
 )
 
 type data struct {
