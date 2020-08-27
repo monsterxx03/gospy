@@ -1,3 +1,7 @@
+## 0.5.0
+
+- Support PIE build binary in 1.15
+
 ## 0.4.0
 - Enhance summary output 
 - Show related channel info when goroutine is sending/receiving/select chan

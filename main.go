@@ -173,21 +173,21 @@ func main() {
 				return nil
 			},
 		},
-		{
-			Name:  "heapobjs",
-			Usage: "dump heap objs",
-			Flags: []cli.Flag{binFlag, pidFlag, nonblockingFlag},
-			Action: func(c *cli.Context) error {
-				p, err := proc.New(pid, bin)
-				if err != nil {
-					return err
-				}
-				if err := p.DumpHeapObjs(nonblocking); err != nil {
-					return err
-				}
-				return nil
-			},
-		},
+		// {
+		// 	Name:  "heapobjs",
+		// 	Usage: "dump heap objs",
+		// 	Flags: []cli.Flag{binFlag, pidFlag, nonblockingFlag},
+		// 	Action: func(c *cli.Context) error {
+		// 		p, err := proc.New(pid, bin)
+		// 		if err != nil {
+		// 			return err
+		// 		}
+		// 		if err := p.DumpHeapObjs(nonblocking); err != nil {
+		// 			return err
+		// 		}
+		// 		return nil
+		// 	},
+		// },
 		{
 			Name:    "version",
 			Aliases: []string{"v"},
