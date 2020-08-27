@@ -18,7 +18,7 @@ import (
 const (
 	_AT_NULL_AMD64  = 0
 	_AT_ENTRY_AMD64 = 9
-	HEAP_BASE = 0xC000000000  // go runtime allocate heap in range 0x00c000000000 ~ 0x00e000000000, ignore ASLR https://github.com/golang/go/issues/27583
+	HEAP_BASE = 0xC000000000  // go runtime allocate heap starts at 0x00c000000000, ignore ASLR https://github.com/golang/go/issues/27583
 )
 
 // PSummary holds process summary info
