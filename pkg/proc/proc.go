@@ -9,9 +9,16 @@ import (
 	"strconv"
 	"sync"
 	"text/tabwriter"
+	"encoding/binary"
 	"time"
 
 	gbin "github.com/monsterxx03/gospy/pkg/binary"
+)
+
+const (
+	_AT_NULL_AMD64  = 0
+	_AT_ENTRY_AMD64 = 9
+	HEAP_BASE = 0xC000000000  // go runtime allocate heap in range 0x00c000000000 ~ 0x00e000000000, ignore ASLR https://github.com/golang/go/issues/27583
 )
 
 // PSummary holds process summary info
@@ -89,6 +96,7 @@ type Process struct {
 	leadThread *Thread
 	memFile    *os.File
 	pLock      *sync.Mutex // ensure one ptrace one time.
+	baseAddr     	uint64
 	goVersion  string
 	gomaxprocs int
 
@@ -103,6 +111,9 @@ func (p *Process) ReadVMA(addr uint64) (uint64, error) {
 	var err error
 	// ptrace's result is a long
 	data := make([]byte, POINTER_SIZE)
+	if addr < HEAP_BASE {
+		addr = p.baseAddr + addr
+	}
 	_, err = p.memFile.ReadAt(data, int64(addr))
 	if err != nil {
 		return 0, err
@@ -113,6 +124,10 @@ func (p *Process) ReadVMA(addr uint64) (uint64, error) {
 
 func (p *Process) ReadData(data []byte, addr uint64) error {
 	var err error
+	if addr < HEAP_BASE {  // addr is an offset
+		addr =  p.baseAddr + addr
+	}
+	// if addr > HEAP_BASE, it's maybe an address in heap, or a vma, just use addr directly.
 	_, err = p.memFile.ReadAt(data, int64(addr))
 	if err != nil {
 		return err
@@ -174,6 +189,28 @@ func (p *Process) DumpHeap(lock bool) error {
 		}
 	}
 
+	return nil
+}
+
+func (p *Process) DumpHeapObjs(lock bool) error {
+	if lock {
+		if err := p.Attach(); err != nil {
+			return err
+		}
+		defer p.Detach()
+	}
+	h := new(MHeap)
+	h.Init(p, p.bin.MHeapStruct, p.bin.MHeapAddr)
+	if err := h.Parse(p.bin.MHeapAddr); err != nil {
+		return err
+	}
+	for _, m := range h.MSpans {
+		if m.State != mspanInUse || m.ElemSize == 0 {
+			continue
+		}
+		n := (m.Npages << 13) / uint64(m.ElemSize)
+		fmt.Printf("startAddr: %d, elemSize: %d, npages: %d, n: %d, %s \n", m.StartAddr, m.ElemSize, m.Npages, n, m.SpanClass)
+	}
 	return nil
 }
 
@@ -595,6 +632,35 @@ func (p *Process) handlePtraceFuncs() {
 	}
 }
 
+
+
+// Calculate entry point address for PIE binary,
+// if it's not PIE build, will return 0.
+// Borrowed from https://github.com/go-delve/delve/blob/v1.5.0/pkg/proc/linutil/auxv.go
+func entryPointFromAuxvAMD64(auxv []byte) uint64 {
+	rd := bytes.NewBuffer(auxv)
+
+	for {
+		var tag, val uint64
+		err := binary.Read(rd, binary.LittleEndian, &tag)
+		if err != nil {
+			return 0
+		}
+		err = binary.Read(rd, binary.LittleEndian, &val)
+		if err != nil {
+			return 0
+		}
+
+		switch tag {
+		case _AT_NULL_AMD64:
+			return 0
+		case _AT_ENTRY_AMD64:
+			return val
+		}
+	}
+}
+
+
 // New a Process struct for target pid
 func New(pid int, bin string) (*Process, error) {
 	var err error
@@ -615,10 +681,19 @@ func New(pid int, bin string) (*Process, error) {
 	if err != nil {
 		return nil, err
 	}
+	auxvbuf, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/auxv", pid))
+	if err != nil {
+		return nil, err
+	}
+	base := entryPointFromAuxvAMD64(auxvbuf)
+	if base > 0 {
+		base = base - b.Entry	
+	}	
 	p := &Process{
 		ID:             pid,
 		bin:            b,
 		pLock:          new(sync.Mutex),
+		baseAddr: 		base,
 		memFile:        memFile,
 		threads:        make(map[int]*Thread),
 		ptraceChan:     make(chan func()),

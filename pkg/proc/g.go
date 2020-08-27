@@ -153,9 +153,9 @@ func (g *G) Parse(addr uint64) error {
 		return nil
 	}
 	p := g.Process()
-	g.CurLoc = p.getLocation(g.Sched.PC)
-	g.GoLoc = p.getLocation(g.Gopc)
-	g.StartLoc = p.getLocation(g.Startpc)
+	g.CurLoc = p.getLocation(g.Sched.PC - p.baseAddr)
+	g.GoLoc = p.getLocation(g.Gopc - p.baseAddr)
+	g.StartLoc = p.getLocation(g.Startpc - p.baseAddr)
 	return nil
 }
 

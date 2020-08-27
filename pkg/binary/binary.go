@@ -43,6 +43,7 @@ type Binary struct {
 	Path      string
 	bin       *elf.File
 	funcCache map[uint64]*Location
+	Entry     uint64 // elf binary entry point address
 	SymTable  *gosym.Table
 
 	StrtMap map[string]*Strt // get strrt by name
@@ -106,7 +107,10 @@ func Load(path string) (*Binary, error) {
 	}
 	lnSession := b.Section(".gopclntab")
 	if lnSession == nil {
-		return nil, fmt.Errorf("Can't find .gopclntab session in binary, not a debug build?")
+		lnSession = b.Section(".data.rel.ro.gopclntab")
+		if lnSession == nil {
+			return nil, fmt.Errorf("Can't find .gopclntab or .data.rel.ro.gopclntab session in binary, not a debug build? or it's a pie binary < go1.15?")
+		}
 	}
 	lndata, err := lnSession.Data()
 	if err != nil {
@@ -119,7 +123,7 @@ func Load(path string) (*Binary, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Binary{Path: realpath, bin: b, funcCache: make(map[uint64]*Location), SymTable: symtab}, nil
+	return &Binary{Path: realpath, bin: b, Entry: b.Entry, funcCache: make(map[uint64]*Location), SymTable: symtab}, nil
 }
 
 // Initialize will pre parse some info from elf binary

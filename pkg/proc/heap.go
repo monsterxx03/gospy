@@ -36,6 +36,7 @@ type MSpan struct {
 	SpanClass  spanClass  `name:"spanclass"`
 	Sweepgen   uint32     `name:"sweepgen"`
 	AllocCount uint16     `name:"allocCount"`
+	ElemSize   uint8      `name:"elemsize"`
 	State      mspanstate `name:"state"`
 }
 

@@ -108,8 +108,8 @@ binary will be created under gospy/bin/
 
 - x86_64 linux only
 - Don't work with binaries without debug info, if you build with linker flag `-w -s`, gospy won't be able to figure out function/variable names. 
-- Don't work with binaries build with pie mode(go build -buildmode=pie), eg: official released dockerd binaries. For some reason, pie binary keeps debug info, but stripped
- the `.gopclntab` section, don't know how to handle it so far...
+
+If binary is build with  `-buildmode=pie`, only support go >= 1.15. Since .gopclntab is missing in PIE mode before 1.15.
 
 ## FAQ
 
