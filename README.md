@@ -91,6 +91,7 @@ tested:
 - [x] 1.12.X 
 - [x] 1.13.X
 - [x] 1.14.X
+- [x] 1.15.x
 
 ## Build from source
 

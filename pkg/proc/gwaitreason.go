@@ -62,6 +62,7 @@ var waitReason_1_13 = waitReasonMapping{
 	23:        "wait for GC cycle",
 	24:          "GC worker (idle)",
 	25: "preempted",   // added in 1.14
+	26: "debug call", // added in 1.15
 }
 
 var waitReason_default = waitReason_1_13
