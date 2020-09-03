@@ -64,6 +64,23 @@ func main() {
 	app.Usage = "inspect goroutines in non-invasive fashion"
 	app.Commands = []cli.Command{
 		{
+			Name: "gover",
+			Usage: "Dump go process version info",
+			Flags: []cli.Flag{binFlag, pidFlag},
+			Action: func(c *cli.Context) error {
+				p, err := proc.New(pid, bin)
+				if err != nil {
+					return err
+				}
+				ver, err := p.GoVersion()
+				if err != nil {
+					return err
+				}
+				fmt.Println(ver)
+				return nil
+			},
+		},
+		{
 			Name:    "summary",
 			Aliases: []string{"s"},
 			Usage:   "Dump go process internal summary",
