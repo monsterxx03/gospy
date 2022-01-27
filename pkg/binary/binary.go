@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 )
 
@@ -93,7 +94,7 @@ type StrtMember struct {
 }
 
 func Load(path string) (*Binary, error) {
-	realpath, err := os.Readlink(path)
+	realpath, err := filepath.EvalSymlinks(path)
 	if err != nil {
 		return nil, err
 	}
