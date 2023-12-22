@@ -11,19 +11,8 @@ jobs:
     name: build and upload
     runs-on : "ubuntu-latest"
     steps:
-    - name: create release
-      id: create_release
-      uses: actions/create-release@v1.0.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-
     - name: Check out code
-      uses: actions/checkout@v1
+      uses: actions/checkout@v2
 
     - name: Setup Go
       uses: actions/setup-go@v1
@@ -34,7 +23,7 @@ jobs:
       run: make
 
     - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1.0.1
+      uses: actions/upload-release-asset@v1.0.2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -42,3 +31,14 @@ jobs:
         asset_path: ./bin/gospy
         asset_name: gospy_linux_amd64
         asset_content_type: application/octet-stream
+
+    - name: create release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
