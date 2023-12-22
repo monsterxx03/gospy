@@ -72,7 +72,7 @@ type Binary struct {
 	MHeapAddr           uint64 `name:"runtime.mheap_"`          // parsed vma of runtime.mheap_
 	SudogStruct         *Strt  `name:"runtime.sudog"`           // parsed runtime.sudog struct
 	HChanStruct         *Strt  `name:"runtime.hchan"`           // parsed runtime.hchan struct
-	TypeStruct          *Strt  `name:"runtime._type"`           // parsed runtime._type struct
+	TypeStruct          *Strt  `name:"internal/abi.Type"`       // parsed internal/abi.Type struct, from 1.21
 }
 
 // Strt is a abstruct struct parsed from dwarf info

@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        gospy_go_version: ["1.15", "1.16"]
-        e2e_go_version: ["1.10", "1.11", "1.12", "1.13", "1.14", "1.15", "1.16"]
+        gospy_go_version: ["1.20", "1.21"]
+        e2e_go_version: ["1.21"]
     steps:
 
     - name: Setup e2e Go ${{ matrix.e2e_go_version }}

@@ -81,18 +81,10 @@ dump runtime heap info: `sudo ./gospy heap --pid 1234`
 
 ## Target process go version compatibility
 
-Works on target go version >= 1.10, the DWARF info in binary is different before 1.10: https://golang.org/doc/go1.10#compiler.
-Current code won't work.
-
+Works on target go version >= 1.21
 tested:
 
-- [x] 1.10.X
-- [x] 1.11.X
-- [x] 1.12.X 
-- [x] 1.13.X
-- [x] 1.14.X
-- [x] 1.15.x
-- [x] 1.16.x
+- [x] 1.21.x
 
 ## Build from source
 

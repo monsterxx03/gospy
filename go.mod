@@ -1,6 +1,6 @@
 module github.com/monsterxx03/gospy
 
-go 1.12
+go 1.21
 
 require (
 	github.com/gizak/termui/v3 v3.1.0

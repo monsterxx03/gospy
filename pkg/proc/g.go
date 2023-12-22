@@ -38,7 +38,7 @@ type HChan struct {
 	QCount    uint   `name:"qcount"`
 	DataqSize uint   `name:"dataqsiz"`
 	ElemSize  uint16 `name:"elemsize"`
-	ElemType  *Type  `name:"elemtype" binStrt:"runtime._type"`
+	ElemType  *Type  `name:"elemtype" binStrt:"internal/abi.Type"`
 	Closed    uint32 `name:"closed"`
 	Sendx     uint   `name:"sendx"`
 	Recvx     uint   `name:"recvx"`
