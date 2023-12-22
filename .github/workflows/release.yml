@@ -22,16 +22,6 @@ jobs:
     - name: Build
       run: make
 
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./bin/gospy
-        asset_name: gospy_linux_amd64
-        asset_content_type: application/octet-stream
-
     - name: create release
       id: create_release
       uses: actions/create-release@v1
@@ -42,3 +32,13 @@ jobs:
         release_name: Release ${{ github.ref }}
         draft: false
         prerelease: false
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./bin/gospy
+        asset_name: gospy_linux_amd64
+        asset_content_type: application/octet-stream
