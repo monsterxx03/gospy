@@ -31,11 +31,11 @@ const (
 	kindMask = (1 << 5) - 1
 )
 
-// runtime._type
+// internal/abi.Type
 type Type struct {
 	common
-	Kind uint8 `name:"kind"`
-	Str  int32 `name:"str"`
+	Kind uint8 `name:"Kind_"`
+	Str  int32 `name:"Str"`
 }
 
 func (c *Type) Parse(addr uint64) error {
