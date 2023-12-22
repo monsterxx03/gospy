@@ -35,11 +35,13 @@ const (
 	gdead                   // 6
 	genqueue_unused         // 7
 	gcopystack              // 8
+	gpreempted              // 9
 	gscan            = 0x1000
-	gscanrunnable    = gscan + grunnable // 0x1001
-	gscanrunning     = gscan + grunning  // 0x1002
-	gscansyscall     = gscan + gsyscall  // 0x1003
-	gscanwaiting     = gscan + gwaiting  // 0x1004
+	gscanrunnable    = gscan + grunnable  // 0x1001
+	gscanrunning     = gscan + grunning   // 0x1002
+	gscansyscall     = gscan + gsyscall   // 0x1003
+	gscanwaiting     = gscan + gwaiting   // 0x1004
+	gscanpreempted   = gscan + gpreempted // 0x1009
 )
 
 var gstatusStrings = [...]string{
@@ -52,13 +54,14 @@ var gstatusStrings = [...]string{
 	gdead:            "dead",
 	genqueue_unused:  "enqueue_unused",
 	gcopystack:       "copystack",
+	gpreempted:       "preempted",
 	gscan:            "scan",
 	gscanrunnable:    "scanrunnable",
 	gscanrunning:     "scanrunning",
 	gscansyscall:     "scansyscall",
 	gscanwaiting:     "scanwaiting",
+	gscanpreempted:   "scanpreempted",
 }
-
 
 // from: man proc
 var threadStateStrings = map[string]string{
