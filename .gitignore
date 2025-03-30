@@ -1,0 +1,5 @@
+.aider*
+gospy*
+!screenshots/*
+test_server/test_server
+!.aider.conf.yml

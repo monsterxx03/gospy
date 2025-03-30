@@ -1,0 +1,8 @@
+#architect: true
+model: deepseek/deepseek-chat
+weak-model: deepseek/deepseek-chat
+editor-model: deepseek/deepseek-chat 
+cache-prompts: true
+editor: nvim
+watch-files: true
+test-cmd: make
