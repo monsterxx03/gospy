@@ -14,10 +14,10 @@ build-linux-arm64:
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o $(BINARY_NAME)-linux-arm64 .
 
 build-darwin:
-	GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -o $(BINARY_NAME)-darwin .
+	GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -o $(BINARY_NAME)-darwin-arm64 .
 
 clean:
-	rm -f $(BINARY_NAME) $(BINARY_NAME)-linux-amd64 $(BINARY_NAME)-linux-arm64 $(BINARY_NAME)-darwin
+	rm -f $(BINARY_NAME) $(BINARY_NAME)-linux-amd64 $(BINARY_NAME)-linux-arm64 $(BINARY_NAME)-darwin-*
 
 install-deps:
 	go mod tidy

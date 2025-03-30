@@ -44,9 +44,9 @@ sudo gospy summary --pid <pid> --json
 
 ### API Endpoints
 
-- `GET /api/goroutines?pid=<pid>` - List all goroutines
-- `GET /api/memstats?pid=<pid>` - Get memory statistics
-- `GET /api/runtime?pid=<pid>` - Get runtime version info
+- `GET /goroutines?pid=<pid>` - List all goroutines
+- `GET /memstats?pid=<pid>` - Get memory statistics
+- `GET /runtime?pid=<pid>` - Get runtime version info
 
 ### Terminal UI Controls
 
