@@ -27,7 +27,7 @@ type darwinMemReader struct {
 	staticBase uint64
 }
 
-func NewProcessMemReader(pid int, binPath string) (ProcessMemReader, error) {
+func newProcessMemReader(pid int, binPath string) (ProcessMemReader, error) {
 	loader := bin.NewBinaryLoader()
 	var err error
 	if binPath != "" {
