@@ -160,6 +160,11 @@ func main() {
 						Usage:   "Refresh interval in seconds",
 						Value:   2,
 					},
+					&cli.BoolFlag{
+						Name:    "debug",
+						Usage:   "Enable debug mode (wait for dlv attach)",
+						Value:   false,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					if os.Geteuid() != 0 {
@@ -177,6 +182,12 @@ func main() {
 						return fmt.Errorf("failed to create memory reader: %w", err)
 					}
 					defer memReader.Close()
+
+					// Wait for debugger if debug flag is set
+					if c.Bool("debug") {
+						fmt.Printf("Waiting for dlv to attach to PID %d...\n", os.Getpid())
+						select {} // Block forever until debugger attaches
+					}
 
 					// Create and run top UI
 					topUI := termui.NewTopUI(pid, interval, memReader)
