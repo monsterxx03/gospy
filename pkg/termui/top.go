@@ -103,6 +103,7 @@ func (t *TopUI) Run() error {
 				go t.app.QueueUpdateDraw(
 					func() {
 						t.updateHelpText(help)
+						t.refreshChan <- struct{}{}
 					},
 				)
 			}
@@ -306,25 +307,6 @@ func (t *TopUI) renderTitle(rt *proc.Runtime, goroutineCount int) {
 	t.titleView.SetText(title)
 }
 
-func (t *TopUI) update() {
-	// Fetch data first
-	rt, memStat, goroutines, err := t.fetchData()
-	if err != nil {
-		t.app.Stop()
-		fmt.Fprintf(os.Stderr, "failed to get goroutines: %v\n", err)
-		return
-	}
-
-	// Render goroutines table
-	t.renderGoroutines(goroutines)
-
-	// Update title and memory stats
-	t.renderTitle(rt, len(goroutines))
-
-	if memStat != nil && t.memStatsView != nil {
-		t.renderMemStats(memStat, goroutines)
-	}
-}
 func (t *TopUI) renderMemStats(memStat *proc.MemStat, goroutines []proc.G) {
 	lastGC := "never"
 	if memStat.LastGC > 0 {
@@ -363,4 +345,24 @@ func (t *TopUI) renderMemStats(memStat *proc.MemStat, goroutines []proc.G) {
 		statusStr,
 	)
 	t.memStatsView.SetText(gcStats)
+}
+
+func (t *TopUI) update() {
+	// Fetch data first
+	rt, memStat, goroutines, err := t.fetchData()
+	if err != nil {
+		t.app.Stop()
+		fmt.Fprintf(os.Stderr, "failed to get goroutines: %v\n", err)
+		return
+	}
+
+	// Update title and memory stats
+	t.renderTitle(rt, len(goroutines))
+
+	if memStat != nil && t.memStatsView != nil {
+		t.renderMemStats(memStat, goroutines)
+	}
+
+	// Render goroutines table
+	t.renderGoroutines(goroutines)
 }
