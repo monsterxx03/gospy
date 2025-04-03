@@ -323,7 +323,7 @@ func (t *TopUI) update() {
 		if memStat != nil && t.memStatsView != nil {
 			lastGC := "never"
 			if memStat.LastGC > 0 {
-				lastGC = proc.FormatDuration(time.Since(time.Unix(int64(memStat.LastGC), 0))) + " ago"
+				lastGC = proc.FormatDuration(time.Since(time.Unix(0, int64(memStat.LastGC)))) + " ago"
 			}
 			// Calculate goroutine status distribution
 			statusCounts := make(map[string]int)
