@@ -161,9 +161,9 @@ func main() {
 						Value:   2,
 					},
 					&cli.BoolFlag{
-						Name:    "debug",
-						Usage:   "Enable debug mode (wait for dlv attach)",
-						Value:   false,
+						Name:  "debug",
+						Usage: "Enable debug mode (wait for dlv attach)",
+						Value: false,
 					},
 				},
 				Action: func(c *cli.Context) error {
@@ -200,7 +200,7 @@ func main() {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			fmt.Println("Welcome to procmon! Use 'summary --pid' to get process info")
+			fmt.Println("Welcome to gospy! Use 'summary --pid' to get process info")
 			return nil
 		},
 	}
