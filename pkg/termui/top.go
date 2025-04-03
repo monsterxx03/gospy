@@ -334,6 +334,7 @@ func (t *TopUI) update() {
 				proc.FormatDuration(time.Duration(memStat.PauseNs[0])),
 				proc.FormatDuration(time.Duration(memStat.PauseNs[1])),
 				proc.FormatDuration(time.Duration(memStat.PauseNs[2])),
+				statusStr,
 			)
 			t.memStatsView.SetText(gcStats)
 		}
