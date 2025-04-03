@@ -210,6 +210,7 @@ func (t *TopUI) fetchData() (*proc.Runtime, *proc.MemStat, []proc.G, error) {
 	return rt, memStat, goroutines, nil
 }
 
+// ai! refactor update(), split goroutines render logic to another function
 func (t *TopUI) update() {
 	// Fetch data first
 	rt, memStat, goroutines, err := t.fetchData()
@@ -293,7 +294,7 @@ func (t *TopUI) update() {
 			statusNames = append(statusNames, status)
 		}
 		sort.Strings(statusNames)
-		
+
 		// Build parts in sorted order
 		for _, status := range statusNames {
 			statusParts = append(statusParts, fmt.Sprintf("%s:%d", status, group.status[status]))
