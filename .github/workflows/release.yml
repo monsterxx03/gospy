@@ -5,68 +5,68 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
-  build:
-    name: Build and Release
-    runs-on: ${{ matrix.os }}
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [1.24.x]
-        os: [ubuntu-latest, macos-latest]
-        include:
-          - os: ubuntu-latest
-            artifact_name: gospy-linux-amd64
-            env:
-              GOOS: linux
-              GOARCH: amd64
-          - os: ubuntu-latest
-            artifact_name: gospy-linux-arm64
-            env:
-              GOOS: linux
-              GOARCH: arm64
-          - os: macos-latest
-            artifact_name: gospy-darwin-arm64
-            env:
-              GOOS: darwin
-              GOARCH: arm64
-
+        goarch: [amd64 , arm64]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: ${{ matrix.go-version }}
-
+          go-version: 1.24.x
       - name: Build
-        env: ${{ matrix.env }}
+        env:
+          GOARCH: ${{ matrix.goarch }}
         run: |
-          go build -o ${{ matrix.artifact_name }} .
-
+          go build -o gospy-linux-${{ matrix.goarch }} .
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: |
-            ${{ matrix.artifact_name }}
-
+          name: gospy-linux-${{ matrix.goarch }}
+          path: gospy-linux-${{ matrix.goarch }}
+  build-macos:
+    name: Build MacOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.24.x
+      - name: Build
+        run: |
+          go build -o gospy-darwin-arm64 .
+      - name: upload-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gospy-darwin-arm64
+          path: gospy-darwin-arm64
   release:
     name: Create Release
-    needs: build
+    needs:
+      - build-linux
+      - build-macos
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
         uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
+      - name: LS artifacts
+        run: ls -R
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref_name }}
+          name: "Release ${{ github.ref }}"
           files: |
-            artifacts/gospy-linux-amd64
-            artifacts/gospy-linux-arm64
-            artifacts/gospy-darwin-arm64
+            gospy-linux-amd64/gospy-linux-amd64
+            gospy-linux-arm64/gospy-linux-arm64
+            gospy-darwin-arm64/gospy-darwin-arm64
