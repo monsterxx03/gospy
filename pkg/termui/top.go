@@ -319,10 +319,16 @@ func (t *TopUI) update() {
 
 			// Build status string
 			var statusParts []string
-			for status, count := range statusCounts {
-				statusParts = append(statusParts, fmt.Sprintf("%s:%d", status, count))
+			// Sort status names alphabetically
+			var statusNames []string
+			for status := range statusCounts {
+				statusNames = append(statusNames, status)
 			}
-			// ai! 排序
+			sort.Strings(statusNames)
+			
+			for _, status := range statusNames {
+				statusParts = append(statusParts, fmt.Sprintf("%s:%d", status, statusCounts[status]))
+			}
 			statusStr := strings.Join(statusParts, " ")
 
 			gcStats := fmt.Sprintf(
