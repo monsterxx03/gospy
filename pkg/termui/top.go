@@ -210,16 +210,7 @@ func (t *TopUI) fetchData() (*proc.Runtime, *proc.MemStat, []proc.G, error) {
 	return rt, memStat, goroutines, nil
 }
 
-// ai! refactor update(), split goroutines render logic to another function
-func (t *TopUI) update() {
-	// Fetch data first
-	rt, memStat, goroutines, err := t.fetchData()
-	if err != nil {
-		t.app.Stop()
-		fmt.Fprintf(os.Stderr, "failed to get goroutines: %v\n", err)
-		return
-	}
-
+func (t *TopUI) renderGoroutines(goroutines []proc.G) {
 	// Group goroutines
 	groups := make(map[string]*struct {
 		count  int
@@ -249,7 +240,7 @@ func (t *TopUI) update() {
 		groups[funcName].status[g.Status]++
 	}
 
-	// Process and display the data
+	// Clear and setup table headers
 	t.table.Clear()
 	t.table.SetCell(0, 0, tview.NewTableCell("Count").
 		SetAlign(tview.AlignCenter).
@@ -264,7 +255,7 @@ func (t *TopUI) update() {
 		SetTextColor(tcell.ColorYellow).
 		SetBackgroundColor(tcell.ColorDarkSlateGray))
 
-	// Convert to slice for sorting
+	// Group goroutines by function name
 	type goroutineGroup struct {
 		funcName string
 		count    int
@@ -307,6 +298,19 @@ func (t *TopUI) update() {
 		row++
 	}
 
+func (t *TopUI) update() {
+	// Fetch data first
+	rt, memStat, goroutines, err := t.fetchData()
+	if err != nil {
+		t.app.Stop()
+		fmt.Fprintf(os.Stderr, "failed to get goroutines: %v\n", err)
+		return
+	}
+
+	// Render goroutines table
+	t.renderGoroutines(goroutines)
+
+	// Update title and memory stats
 	if t.app != nil {
 		uptime := fmt.Sprintf(" [white]| [cyan]Uptime: %s", proc.FormatDuration(rt.Uptime()))
 		title := fmt.Sprintf("[yellow]PID: %d [white]| [green]Go: %s [white]| [blue]Goroutines: %d [white]| [purple]Refresh: %ds [white]| [orange]Update: %v%s",
