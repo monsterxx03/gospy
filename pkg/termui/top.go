@@ -299,6 +299,13 @@ func (t *TopUI) renderGoroutines(goroutines []proc.G) {
 	}
 }
 
+func (t *TopUI) renderTitle(rt *proc.Runtime, goroutineCount int) {
+	uptime := fmt.Sprintf(" [white]| [cyan]Uptime: %s", proc.FormatDuration(rt.Uptime()))
+	title := fmt.Sprintf("[yellow]PID: %d [white]| [green]Go: %s [white]| [blue]Goroutines: %d [white]| [purple]Refresh: %ds [white]| [orange]Update: %v%s",
+		t.pid, rt.GoVersion, goroutineCount, t.interval, t.lastDuration.Round(time.Microsecond), uptime)
+	t.titleView.SetText(title)
+}
+
 func (t *TopUI) update() {
 	// Fetch data first
 	rt, memStat, goroutines, err := t.fetchData()
@@ -311,12 +318,8 @@ func (t *TopUI) update() {
 	// Render goroutines table
 	t.renderGoroutines(goroutines)
 
-	// ai! split title render logic to another function
 	// Update title and memory stats
-	uptime := fmt.Sprintf(" [white]| [cyan]Uptime: %s", proc.FormatDuration(rt.Uptime()))
-	title := fmt.Sprintf("[yellow]PID: %d [white]| [green]Go: %s [white]| [blue]Goroutines: %d [white]| [purple]Refresh: %ds [white]| [orange]Update: %v%s",
-		t.pid, rt.GoVersion, len(goroutines), t.interval, t.lastDuration.Round(time.Microsecond), uptime)
-	t.titleView.SetText(title)
+	t.renderTitle(rt, len(goroutines))
 
 	if memStat != nil && t.memStatsView != nil {
 		lastGC := "never"
