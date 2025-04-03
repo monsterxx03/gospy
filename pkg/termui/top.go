@@ -287,6 +287,7 @@ func (t *TopUI) update() {
 	for _, group := range sortedGroups {
 		// Build status string
 		var statusParts []string
+		// ai! sort by status
 		for s, c := range group.status {
 			statusParts = append(statusParts, fmt.Sprintf("%s:%d", s, c))
 		}
@@ -325,7 +326,7 @@ func (t *TopUI) update() {
 				statusNames = append(statusNames, status)
 			}
 			sort.Strings(statusNames)
-			
+
 			for _, status := range statusNames {
 				statusParts = append(statusParts, fmt.Sprintf("%s:%d", status, statusCounts[status]))
 			}
