@@ -1,6 +1,7 @@
 package proc
 
 import (
+	"strings"
 	"time"
 	_ "unsafe" // required to use //go:linkname
 )
@@ -34,7 +35,8 @@ func (r *commonMemReader) RuntimeInfo() (*Runtime, error) {
 	if err == nil {
 		version, err := r.readString(r.GetStaticBase() + goVersionAddr)
 		if err == nil {
-			rt.GoVersion = version
+			// possible format: go1.23.1 X:nocoverageredesign
+			rt.GoVersion = strings.Fields(version)[0]
 		}
 	}
 
