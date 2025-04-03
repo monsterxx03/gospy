@@ -316,12 +316,13 @@ func (t *TopUI) update() {
 			for _, g := range goroutines {
 				statusCounts[g.Status]++
 			}
-			
+
 			// Build status string
 			var statusParts []string
 			for status, count := range statusCounts {
 				statusParts = append(statusParts, fmt.Sprintf("%s:%d", status, count))
 			}
+			// ai! 排序
 			statusStr := strings.Join(statusParts, " ")
 
 			gcStats := fmt.Sprintf(
