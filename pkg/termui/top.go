@@ -285,11 +285,18 @@ func (t *TopUI) update() {
 
 	row := 1
 	for _, group := range sortedGroups {
-		// Build status string
+		// Build status string sorted alphabetically
 		var statusParts []string
-		// ai! sort by status
-		for s, c := range group.status {
-			statusParts = append(statusParts, fmt.Sprintf("%s:%d", s, c))
+		// Get sorted status names
+		statusNames := make([]string, 0, len(group.status))
+		for status := range group.status {
+			statusNames = append(statusNames, status)
+		}
+		sort.Strings(statusNames)
+		
+		// Build parts in sorted order
+		for _, status := range statusNames {
+			statusParts = append(statusParts, fmt.Sprintf("%s:%d", status, group.status[status]))
 		}
 		statusStr := strings.Join(statusParts, " ")
 
