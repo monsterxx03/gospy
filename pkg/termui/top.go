@@ -321,44 +321,46 @@ func (t *TopUI) update() {
 	// Update title and memory stats
 	t.renderTitle(rt, len(goroutines))
 
-	// ai! memstas render logic to seperate func
 	if memStat != nil && t.memStatsView != nil {
-		lastGC := "never"
-		if memStat.LastGC > 0 {
-			lastGC = proc.FormatDuration(time.Since(time.Unix(0, int64(memStat.LastGC)))) + " ago"
-		}
-		// Calculate goroutine status distribution
-		statusCounts := make(map[string]int)
-		for _, g := range goroutines {
-			statusCounts[g.Status]++
-		}
-
-		// Build status string
-		var statusParts []string
-		// Sort status names alphabetically
-		var statusNames []string
-		for status := range statusCounts {
-			statusNames = append(statusNames, status)
-		}
-		sort.Strings(statusNames)
-
-		for _, status := range statusNames {
-			statusParts = append(statusParts, fmt.Sprintf("%s:%d", status, statusCounts[status]))
-		}
-		statusStr := strings.Join(statusParts, " ")
-
-		gcStats := fmt.Sprintf(
-			"[yellow]GC Stats: [white]Last: %s | Total Pause: %s | Count: %d\n"+
-				"[yellow]Recent Pauses: [white]%s, %s, %s\n"+
-				"[yellow]Goroutine Status: [white]%s",
-			lastGC,
-			proc.FormatDuration(time.Duration(memStat.PauseTotalNs)),
-			memStat.NumGC,
-			proc.FormatDuration(time.Duration(memStat.PauseNs[0])),
-			proc.FormatDuration(time.Duration(memStat.PauseNs[1])),
-			proc.FormatDuration(time.Duration(memStat.PauseNs[2])),
-			statusStr,
-		)
-		t.memStatsView.SetText(gcStats)
+		t.renderMemStats(memStat, goroutines)
 	}
+}
+func (t *TopUI) renderMemStats(memStat *proc.MemStat, goroutines []proc.G) {
+	lastGC := "never"
+	if memStat.LastGC > 0 {
+		lastGC = proc.FormatDuration(time.Since(time.Unix(0, int64(memStat.LastGC)))) + " ago"
+	}
+	// Calculate goroutine status distribution
+	statusCounts := make(map[string]int)
+	for _, g := range goroutines {
+		statusCounts[g.Status]++
+	}
+
+	// Build status string
+	var statusParts []string
+	// Sort status names alphabetically
+	var statusNames []string
+	for status := range statusCounts {
+		statusNames = append(statusNames, status)
+	}
+	sort.Strings(statusNames)
+
+	for _, status := range statusNames {
+		statusParts = append(statusParts, fmt.Sprintf("%s:%d", status, statusCounts[status]))
+	}
+	statusStr := strings.Join(statusParts, " ")
+
+	gcStats := fmt.Sprintf(
+		"[yellow]GC Stats: [white]Last: %s | Total Pause: %s | Count: %d\n"+
+			"[yellow]Recent Pauses: [white]%s, %s, %s\n"+
+			"[yellow]Goroutine Status: [white]%s",
+		lastGC,
+		proc.FormatDuration(time.Duration(memStat.PauseTotalNs)),
+		memStat.NumGC,
+		proc.FormatDuration(time.Duration(memStat.PauseNs[0])),
+		proc.FormatDuration(time.Duration(memStat.PauseNs[1])),
+		proc.FormatDuration(time.Duration(memStat.PauseNs[2])),
+		statusStr,
+	)
+	t.memStatsView.SetText(gcStats)
 }
