@@ -321,6 +321,7 @@ func (t *TopUI) update() {
 	// Update title and memory stats
 	t.renderTitle(rt, len(goroutines))
 
+	// ai! memstas render logic to seperate func
 	if memStat != nil && t.memStatsView != nil {
 		lastGC := "never"
 		if memStat.LastGC > 0 {
