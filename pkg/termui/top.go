@@ -297,6 +297,7 @@ func (t *TopUI) renderGoroutines(goroutines []proc.G) {
 		t.table.SetCell(row, 2, tview.NewTableCell(group.funcName))
 		row++
 	}
+}
 
 func (t *TopUI) update() {
 	// Fetch data first
