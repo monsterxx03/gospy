@@ -311,10 +311,23 @@ func (t *TopUI) update() {
 			if memStat.LastGC > 0 {
 				lastGC = proc.FormatDuration(time.Since(time.Unix(int64(memStat.LastGC), 0))) + " ago"
 			}
-			// ai! 增加goroutine status 的展示信息
+			// Calculate goroutine status distribution
+			statusCounts := make(map[string]int)
+			for _, g := range goroutines {
+				statusCounts[g.Status]++
+			}
+			
+			// Build status string
+			var statusParts []string
+			for status, count := range statusCounts {
+				statusParts = append(statusParts, fmt.Sprintf("%s:%d", status, count))
+			}
+			statusStr := strings.Join(statusParts, " ")
+
 			gcStats := fmt.Sprintf(
 				"[yellow]GC Stats: [white]Last: %s | Total Pause: %s | Count: %d\n"+
-					"[yellow]Recent Pauses: [white]%s, %s, %s",
+					"[yellow]Recent Pauses: [white]%s, %s, %s\n"+
+					"[yellow]Goroutine Status: [white]%s",
 				lastGC,
 				proc.FormatDuration(time.Duration(memStat.PauseTotalNs)),
 				memStat.NumGC,
