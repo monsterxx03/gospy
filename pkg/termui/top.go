@@ -311,7 +311,7 @@ func (t *TopUI) update() {
 			if memStat.LastGC > 0 {
 				lastGC = proc.FormatDuration(time.Since(time.Unix(int64(memStat.LastGC), 0))) + " ago"
 			}
-			// ai! 增加按goroutine 状态分组的展示信息
+			// ai! 增加goroutine status 的展示信息
 			gcStats := fmt.Sprintf(
 				"[yellow]GC Stats: [white]Last: %s | Total Pause: %s | Count: %d\n"+
 					"[yellow]Recent Pauses: [white]%s, %s, %s",
