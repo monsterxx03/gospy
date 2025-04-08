@@ -113,7 +113,7 @@ func (t *TopUI) Run() error {
 	t.flex = tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(t.titleView, 1, 1, false).    // Title row
-		AddItem(t.memStatsView, 3, 1, false). // Memory stats
+		AddItem(t.memStatsView, 4, 1, false). // Memory stats
 		AddItem(t.table, 0, 1, true).         // Table content
 		AddItem(help, 1, 1, false)            // Help text
 
@@ -307,10 +307,16 @@ func (t *TopUI) renderTitle(rt *proc.Runtime, goroutineCount int) {
 	t.titleView.SetText(title)
 }
 
-func (t *TopUI) renderMemStats(memStat *proc.MemStat, goroutines []proc.G) {
+func (t *TopUI) renderMemStats(memStat *proc.MemStat, goroutines []proc.G, ps []proc.P) {
 	lastGC := "never"
 	if memStat.LastGC > 0 {
 		lastGC = proc.FormatDuration(time.Since(time.Unix(0, int64(memStat.LastGC)))) + " ago"
+	}
+
+	// Calculate processor status distribution
+	pStatusCounts := make(map[string]int)
+	for _, p := range ps {
+		pStatusCounts[p.Status]++
 	}
 	// Calculate goroutine status distribution
 	statusCounts := make(map[string]int)
