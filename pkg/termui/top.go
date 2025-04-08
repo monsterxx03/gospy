@@ -349,6 +349,7 @@ func (t *TopUI) renderMemStats(memStat *proc.MemStat, goroutines []proc.G) {
 
 func (t *TopUI) update() {
 	// Fetch data first
+	// ai! add parsed processees info
 	rt, memStat, goroutines, err := t.fetchData()
 	if err != nil {
 		t.app.Stop()
