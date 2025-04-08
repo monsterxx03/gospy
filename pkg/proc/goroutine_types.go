@@ -22,6 +22,15 @@ const (
 	_Gscanpreempted = _Gscan + _Gpreempted // 0x1009
 )
 
+// Constants for P status (must match runtime2.go exactly)
+const (
+	_Pidle = iota
+	_Prunning
+	_Psyscall
+	_Pgcstop
+	_Pdead
+)
+
 // Status strings that match runtime's representation
 var gStatusMap = map[uint32]string{
 	_Gidle:            "idle",
@@ -65,4 +74,14 @@ type Stack struct {
 type Sched struct {
 	PC uint64 `json:"pc"` // program counter
 	SP uint64 `json:"sp"` // stack pointer
+}
+
+type P struct {
+	Address      uint64 `json:"address"`      // P structure address
+	ID           int32  `json:"id"`           // P ID
+	Status       uint32 `json:"status"`       // P status
+	StatusString string `json:"status_string"` // Human readable status
+	MCache       uint64 `json:"m_cache"`      // Per-P cache for small objects
+	SchedTick    uint32 `json:"sched_tick"`   // Tick counter for scheduler
+	RunqSize     int32  `json:"runq_size"`    // Number of runnable goroutines
 }
