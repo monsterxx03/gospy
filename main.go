@@ -60,6 +60,7 @@ func main() {
 					if err != nil {
 						return fmt.Errorf("failed to get runtime info: %w (is this a Go program?)", err)
 					}
+					// ai!  add runtime p info to output, parsed from memRader.Ps()
 
 					// Get goroutines
 					goroutines, err := memReader.Goroutines()
