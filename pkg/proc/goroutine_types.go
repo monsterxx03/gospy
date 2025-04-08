@@ -22,15 +22,6 @@ const (
 	_Gscanpreempted = _Gscan + _Gpreempted // 0x1009
 )
 
-// Constants for P status (must match runtime2.go exactly)
-const (
-	_Pidle = iota
-	_Prunning
-	_Psyscall
-	_Pgcstop
-	_Pdead
-)
-
 // Status strings that match runtime's representation
 var gStatusMap = map[uint32]string{
 	_Gidle:            "idle",
