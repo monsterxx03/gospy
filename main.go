@@ -60,7 +60,12 @@ func main() {
 					if err != nil {
 						return fmt.Errorf("failed to get runtime info: %w (is this a Go program?)", err)
 					}
-					// ai!  add runtime p info to output, parsed from memRader.Ps()
+
+					// Get processor info
+					ps, err := memReader.Ps()
+					if err != nil {
+						return fmt.Errorf("failed to get processor info: %w", err)
+					}
 
 					// Get goroutines
 					goroutines, err := memReader.Goroutines()
@@ -74,11 +79,13 @@ func main() {
 						type Summary struct {
 							PID        int      `json:"pid"`
 							GoVersion  string   `json:"go_version"`
+							Processors []proc.P `json:"processors"`
 							Goroutines []proc.G `json:"goroutines"`
 						}
 						summary := Summary{
 							PID:        pid,
 							GoVersion:  rt.GoVersion,
+							Processors: ps,
 							Goroutines: goroutines,
 						}
 						enc := json.NewEncoder(os.Stdout)
@@ -91,6 +98,15 @@ func main() {
 					fmt.Printf("  Go Version: %s\n", rt.GoVersion)
 					if !strings.HasPrefix(rt.GoVersion, "go") {
 						fmt.Printf("  Warning: Unexpected version format: %q\n", rt.GoVersion)
+					}
+
+					// Print processor summary
+					fmt.Printf("\nProcessors (%d):\n", len(ps))
+					for _, p := range ps {
+						fmt.Printf("  P%d %-10s schedtick=%d\n", 
+							p.ID, 
+							p.Status,
+							p.SchedTick)
 					}
 
 					fmt.Printf("\nGoroutines (%d):\n", len(goroutines))
