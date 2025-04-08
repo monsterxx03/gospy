@@ -318,38 +318,49 @@ func (t *TopUI) renderMemStats(memStat *proc.MemStat, goroutines []proc.G) {
 		statusCounts[g.Status]++
 	}
 
-	// Build status string
-	var statusParts []string
-	// Sort status names alphabetically
-	var statusNames []string
+	// Build goroutine status string
+	var gStatusParts []string
+	var gStatusNames []string
 	for status := range statusCounts {
-		statusNames = append(statusNames, status)
+		gStatusNames = append(gStatusNames, status)
 	}
-	sort.Strings(statusNames)
+	sort.Strings(gStatusNames)
+	for _, status := range gStatusNames {
+		gStatusParts = append(gStatusParts, fmt.Sprintf("%s:%d", status, statusCounts[status]))
+	}
+	gStatusStr := strings.Join(gStatusParts, " ")
 
-	for _, status := range statusNames {
-		statusParts = append(statusParts, fmt.Sprintf("%s:%d", status, statusCounts[status]))
+	// Build processor status string
+	var pStatusParts []string
+	var pStatusNames []string
+	for status := range pStatusCounts {
+		pStatusNames = append(pStatusNames, status)
 	}
-	statusStr := strings.Join(statusParts, " ")
+	sort.Strings(pStatusNames)
+	for _, status := range pStatusNames {
+		pStatusParts = append(pStatusParts, fmt.Sprintf("%s:%d", status, pStatusCounts[status]))
+	}
+	pStatusStr := strings.Join(pStatusParts, " ")
 
 	gcStats := fmt.Sprintf(
 		"[yellow]GC Stats: [white]Last: %s | Total Pause: %s | Count: %d\n"+
 			"[yellow]Recent Pauses: [white]%s, %s, %s\n"+
-			"[yellow]Goroutine Status: [white]%s",
+			"[yellow]Goroutine Status: [white]%s\n"+
+			"[yellow]Processor Status: [white]%s",
 		lastGC,
 		proc.FormatDuration(time.Duration(memStat.PauseTotalNs)),
 		memStat.NumGC,
 		proc.FormatDuration(time.Duration(memStat.PauseNs[0])),
 		proc.FormatDuration(time.Duration(memStat.PauseNs[1])),
 		proc.FormatDuration(time.Duration(memStat.PauseNs[2])),
-		statusStr,
+		gStatusStr,
+		pStatusStr,
 	)
 	t.memStatsView.SetText(gcStats)
 }
 
 func (t *TopUI) update() {
 	// Fetch data first
-	// ai! add parsed processees info
 	rt, memStat, goroutines, err := t.fetchData()
 	if err != nil {
 		t.app.Stop()
@@ -357,11 +368,18 @@ func (t *TopUI) update() {
 		return
 	}
 
+	// Get processor info
+	ps, err := t.memReader.Ps()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to get processors: %v\n", err)
+		ps = nil
+	}
+
 	// Update title and memory stats
 	t.renderTitle(rt, len(goroutines))
 
 	if memStat != nil && t.memStatsView != nil {
-		t.renderMemStats(memStat, goroutines)
+		t.renderMemStats(memStat, goroutines, ps)
 	}
 
 	// Render goroutines table
