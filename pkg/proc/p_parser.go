@@ -3,7 +3,6 @@ package proc
 import (
 	"encoding/binary"
 	"fmt"
-	bin "github.com/monsterxx03/gospy/pkg/binary"
 )
 
 func (r *commonMemReader) Ps() ([]P, error) {
@@ -30,7 +29,7 @@ func (r *commonMemReader) Ps() ([]P, error) {
 	}
 
 	// Read all P structs in one batch
-	pData, err := r.readGoroutineBatch(ptrs, pSize)
+	pData, err := r.readPtrBatch(ptrs, pSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read P batch: %w", err)
 	}
@@ -70,46 +69,22 @@ func (r *commonMemReader) parsePFromBatch(data []byte, pAddr uint64) (P, error) 
 	if err != nil {
 		return p, fmt.Errorf("failed to get status offset: %w", err)
 	}
-	p.Status = binary.LittleEndian.Uint32(data[statusOffset:]))
-	p.StatusString = parsePStatus(p.Status)
+	status := binary.LittleEndian.Uint32(data[statusOffset:])
+	p.Status = parsePStatus(status)
 
 	// Parse mcache
 	mcacheOffset, err := dwarfLoader.GetStructOffset("runtime.p", "mcache")
 	if err != nil {
 		return p, fmt.Errorf("failed to get mcache offset: %w", err)
 	}
-	p.MCache = binary.LittleEndian.Uint64(data[mcacheOffset:]))
+	p.MCache = binary.LittleEndian.Uint64(data[mcacheOffset:])
 
 	// Parse schedtick
 	schedtickOffset, err := dwarfLoader.GetStructOffset("runtime.p", "schedtick")
 	if err != nil {
 		return p, fmt.Errorf("failed to get schedtick offset: %w", err)
 	}
-	p.SchedTick = binary.LittleEndian.Uint32(data[schedtickOffset:]))
-
-	// Parse runq size
-	runqSizeOffset, err := dwarfLoader.GetStructOffset("runtime.p", "runqsize")
-	if err != nil {
-		return p, fmt.Errorf("failed to get runqsize offset: %w", err)
-	}
-	p.RunqSize = int32(binary.LittleEndian.Uint32(data[runqSizeOffset:]))
+	p.SchedTick = binary.LittleEndian.Uint32(data[schedtickOffset:])
 
 	return p, nil
-}
-
-func parsePStatus(status uint32) string {
-	switch status {
-	case _Pidle:
-		return "idle"
-	case _Prunning:
-		return "running"
-	case _Psyscall:
-		return "syscall"
-	case _Pgcstop:
-		return "gcstop"
-	case _Pdead:
-		return "dead"
-	default:
-		return fmt.Sprintf("unknown(%d)", status)
-	}
 }

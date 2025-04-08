@@ -170,8 +170,8 @@ func (r *commonMemReader) readArray(addr uint64, elementSize, count int) ([]byte
 	return buf, nil
 }
 
-// readGoroutineBatch reads multiple goroutine structs in one operation
-func (r *commonMemReader) readGoroutineBatch(ptrs []uint64, gSize uint64) ([]byte, error) {
+// readPtrBatch reads multiple structs in one operation
+func (r *commonMemReader) readPtrBatch(ptrs []uint64, gSize uint64) ([]byte, error) {
 	if len(ptrs) == 0 {
 		return nil, nil
 	}
@@ -180,7 +180,7 @@ func (r *commonMemReader) readGoroutineBatch(ptrs []uint64, gSize uint64) ([]byt
 	totalSize := gSize * uint64(len(ptrs))
 	buf := make([]byte, totalSize)
 
-	// Read all goroutines in one batch
+	// Read all ptrs in one batch
 	for i, ptr := range ptrs {
 		if ptr == 0 {
 			continue

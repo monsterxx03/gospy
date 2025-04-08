@@ -3,6 +3,7 @@ package proc
 import (
 	"encoding/binary"
 	"fmt"
+
 	bin "github.com/monsterxx03/gospy/pkg/binary"
 )
 
@@ -153,7 +154,7 @@ func (r *commonMemReader) Goroutines() ([]G, error) {
 	}
 
 	// Read all goroutine structs in one batch
-	gData, err := r.readGoroutineBatch(ptrs, gSize)
+	gData, err := r.readPtrBatch(ptrs, gSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read goroutine batch: %w", err)
 	}

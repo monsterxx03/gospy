@@ -9,5 +9,6 @@ type ProcessMemReader interface {
 	Close() error
 	RuntimeInfo() (*Runtime, error)
 	Goroutines() ([]G, error)
+	Ps() ([]P, error)
 	MemStat() (*MemStat, error)
 }
