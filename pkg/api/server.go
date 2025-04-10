@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -98,7 +100,24 @@ func (s *Server) getMCPSseServer() *server.SSEServer {
 		}
 		return mcp.NewToolResultText(string(data)), nil
 	})
-	// ai! add a pgrep tool to find process pid by process name, using pgrep to do it
+
+	pgrepTool := mcp.NewTool("pgrep",
+		mcp.WithDescription("find process IDs by process name"),
+		mcp.WithString("name", mcp.Required(), mcp.Description("process name to search for")))
+	ms.AddTool(pgrepTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		name := request.Params.Arguments["name"].(string)
+		cmd := exec.Command("pgrep", name)
+		output, err := cmd.Output()
+		if err != nil {
+			return nil, fmt.Errorf("pgrep failed: %w", err)
+		}
+		pids := strings.Split(strings.TrimSpace(string(output)), "\n")
+		data, err := json.Marshal(pids)
+		if err != nil {
+			return nil, err
+		}
+		return mcp.NewToolResultText(string(data)), nil
+	})
 
 	return server.NewSSEServer(ms, server.WithBasePath("/mcp"))
 }
