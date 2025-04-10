@@ -145,6 +145,11 @@ func main() {
 						Usage:   "Port to listen on",
 						Value:   8974,
 					},
+					&cli.BoolFlag{
+						Name:    "enable-mcp",
+						Usage:   "Enable MCP protocol support",
+						Value:   false,
+					},
 				},
 				Action: func(c *cli.Context) error {
 					if os.Geteuid() != 0 {
@@ -152,6 +157,7 @@ func main() {
 					}
 					port := c.Int("port")
 					apiServer := api.NewServer(port)
+					apiServer.EnableMCP = c.Bool("enable-mcp")
 					fmt.Printf("Starting API server on port %d\n", port)
 					fmt.Printf("Endpoints:\n")
 					fmt.Printf("  GET /runtime?pid=<PID>     - Get runtime info\n")
