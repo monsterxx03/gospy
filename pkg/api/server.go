@@ -57,7 +57,27 @@ func (s *Server) getMCPSseServer() *server.SSEServer {
 		}
 		return mcp.NewToolResultText(string(data)), nil
 	})
-	// ai! add a memstats tool to dump target golang process's memstats
+
+	memstatsTool := mcp.NewTool("memstats",
+		mcp.WithDescription("dump process's memory statistics"),
+		mcp.WithNumber("pid", mcp.Required(), mcp.Description("process pid")))
+	ms.AddTool(memstatsTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		pid := int(request.Params.Arguments["pid"].(float64))
+		reader, err := s.getReader(pid)
+		if err != nil {
+			return nil, err
+		}
+		memStats, err := reader.MemStat()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get memory stats: %w", err)
+		}
+		data, err := json.Marshal(memStats)
+		if err != nil {
+			return nil, err
+		}
+		return mcp.NewToolResultText(string(data)), nil
+	})
+
 	return server.NewSSEServer(ms, server.WithBasePath("/mcp"))
 }
 
