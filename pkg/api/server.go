@@ -39,7 +39,7 @@ func (s *Server) getMCPSseServer() *server.SSEServer {
 		"1.0.0",
 	)
 	goroutineTool := mcp.NewTool("goroutines",
-		mcp.WithDescription("dump process's goroutines"),
+		mcp.WithDescription("dump golang process's goroutines"),
 		mcp.WithNumber("pid", mcp.Required(), mcp.Description("process pid")))
 	ms.AddTool(goroutineTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		pid := int(request.Params.Arguments["pid"].(float64))
@@ -58,8 +58,8 @@ func (s *Server) getMCPSseServer() *server.SSEServer {
 		return mcp.NewToolResultText(string(data)), nil
 	})
 
-	memstatsTool := mcp.NewTool("memstats",
-		mcp.WithDescription("dump process's memory statistics"),
+	memstatsTool := mcp.NewTool("gomemstats",
+		mcp.WithDescription("dump golang process's memory statistics"),
 		mcp.WithNumber("pid", mcp.Required(), mcp.Description("process pid")))
 	ms.AddTool(memstatsTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		pid := int(request.Params.Arguments["pid"].(float64))
@@ -77,6 +77,7 @@ func (s *Server) getMCPSseServer() *server.SSEServer {
 		}
 		return mcp.NewToolResultText(string(data)), nil
 	})
+	// ai! add goruntime tool to get target golang process's runtime info
 
 	return server.NewSSEServer(ms, server.WithBasePath("/mcp"))
 }
