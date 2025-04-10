@@ -57,6 +57,7 @@ func (s *Server) getMCPSseServer() *server.SSEServer {
 		}
 		return mcp.NewToolResultText(string(data)), nil
 	})
+	// ai! add a memstats tool to dump target golang process's memstats
 	return server.NewSSEServer(ms, server.WithBasePath("/mcp"))
 }
 
