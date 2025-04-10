@@ -146,9 +146,9 @@ func main() {
 						Value:   8974,
 					},
 					&cli.BoolFlag{
-						Name:    "enable-mcp",
-						Usage:   "Enable MCP protocol support",
-						Value:   false,
+						Name:  "enable-mcp",
+						Usage: "Enable MCP protocol support",
+						Value: false,
 					},
 				},
 				Action: func(c *cli.Context) error {
@@ -156,13 +156,16 @@ func main() {
 						return fmt.Errorf("must be run as root")
 					}
 					port := c.Int("port")
-					apiServer := api.NewServer(port)
-					apiServer.EnableMCP = c.Bool("enable-mcp")
+					enableMCP := c.Bool("enable-mcp")
+					apiServer := api.NewServer(port, enableMCP)
 					fmt.Printf("Starting API server on port %d\n", port)
 					fmt.Printf("Endpoints:\n")
 					fmt.Printf("  GET /runtime?pid=<PID>     - Get runtime info\n")
 					fmt.Printf("  GET /goroutines?pid=<PID> - Get goroutines list\n")
 					fmt.Printf("  GET /memstats?pid=<PID>   - Get memory stats\n")
+					if enableMCP {
+						fmt.Printf("  GET /mcp/sse   - MCP SSE endpoint\n")
+					}
 					return apiServer.Start()
 				},
 			},

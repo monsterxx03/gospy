@@ -1,12 +1,15 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
 
+	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 	"github.com/monsterxx03/gospy/pkg/proc"
 )
 
@@ -14,13 +17,47 @@ type Server struct {
 	port    int
 	readers map[int]proc.ProcessMemReader // pid -> reader cache
 	mu      sync.RWMutex
+
+	enableMCP bool
+	mcpServer *server.SSEServer
 }
 
-func NewServer(port int) *Server {
-	return &Server{
+func NewServer(port int, enableMCP bool) *Server {
+	s := &Server{
 		port:    port,
 		readers: make(map[int]proc.ProcessMemReader),
 	}
+	if enableMCP {
+		s.mcpServer = s.getMCPSseServer()
+	}
+	return s
+}
+
+func (s *Server) getMCPSseServer() *server.SSEServer {
+	ms := server.NewMCPServer(
+		"gospy mcp server",
+		"1.0.0",
+	)
+	goroutineTool := mcp.NewTool("goroutines",
+		mcp.WithDescription("dump process's goroutines"),
+		mcp.WithNumber("pid", mcp.Required(), mcp.Description("process pid")))
+	ms.AddTool(goroutineTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		pid := int(request.Params.Arguments["pid"].(float64))
+		reader, err := s.getReader(pid)
+		if err != nil {
+			return nil, err
+		}
+		goroutines, err := reader.Goroutines()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get goroutines: %w", err)
+		}
+		data, err := json.Marshal(goroutines)
+		if err != nil {
+			return nil, err
+		}
+		return mcp.NewToolResultText(string(data)), nil
+	})
+	return server.NewSSEServer(ms, server.WithBasePath("/mcp"))
 }
 
 func (s *Server) getReader(pid int) (proc.ProcessMemReader, error) {
@@ -57,6 +94,9 @@ func (s *Server) Start() error {
 	http.HandleFunc("/runtime", s.handleRuntime)
 	http.HandleFunc("/goroutines", s.handleGoroutines)
 	http.HandleFunc("/memstats", s.handleMemStats)
+	if s.enableMCP {
+		http.Handle("/mcp/", s.mcpServer)
+	}
 	return http.ListenAndServe(fmt.Sprintf(":%d", s.port), nil)
 }
 
