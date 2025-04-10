@@ -77,7 +77,26 @@ func (s *Server) getMCPSseServer() *server.SSEServer {
 		}
 		return mcp.NewToolResultText(string(data)), nil
 	})
-	// ai! add goruntime tool to get target golang process's runtime info
+
+	runtimeTool := mcp.NewTool("goruntime",
+		mcp.WithDescription("get golang process's runtime info"),
+		mcp.WithNumber("pid", mcp.Required(), mcp.Description("process pid")))
+	ms.AddTool(runtimeTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		pid := int(request.Params.Arguments["pid"].(float64))
+		reader, err := s.getReader(pid)
+		if err != nil {
+			return nil, err
+		}
+		runtimeInfo, err := reader.RuntimeInfo()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get runtime info: %w", err)
+		}
+		data, err := json.Marshal(runtimeInfo)
+		if err != nil {
+			return nil, err
+		}
+		return mcp.NewToolResultText(string(data)), nil
+	})
 
 	return server.NewSSEServer(ms, server.WithBasePath("/mcp"))
 }
