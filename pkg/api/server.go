@@ -24,8 +24,9 @@ type Server struct {
 
 func NewServer(port int, enableMCP bool) *Server {
 	s := &Server{
-		port:    port,
-		readers: make(map[int]proc.ProcessMemReader),
+		port:      port,
+		readers:   make(map[int]proc.ProcessMemReader),
+		enableMCP: enableMCP,
 	}
 	if enableMCP {
 		s.mcpServer = s.getMCPSseServer()
