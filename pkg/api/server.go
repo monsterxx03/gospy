@@ -98,6 +98,7 @@ func (s *Server) getMCPSseServer() *server.SSEServer {
 		}
 		return mcp.NewToolResultText(string(data)), nil
 	})
+	// ai! add a pgrep tool to find process pid by process name, using pgrep to do it
 
 	return server.NewSSEServer(ms, server.WithBasePath("/mcp"))
 }
