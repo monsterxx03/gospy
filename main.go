@@ -103,8 +103,8 @@ func main() {
 					// Print processor summary
 					fmt.Printf("\nProcessors (%d):\n", len(ps))
 					for _, p := range ps {
-						fmt.Printf("  P%d %-10s schedtick=%d\n", 
-							p.ID, 
+						fmt.Printf("  P%d %-10s schedtick=%d\n",
+							p.ID,
 							p.Status,
 							p.SchedTick)
 					}
