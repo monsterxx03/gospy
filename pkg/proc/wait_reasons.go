@@ -1,5 +1,35 @@
 package proc
 
+var waitReasonMap1_18 = map[uint8]string{
+	0:  "",
+	1:  "GC assist marking",
+	2:  "IO wait",
+	3:  "chan receive (nil chan)",
+	4:  "chan send (nil chan)",
+	5:  "dumping heap",
+	6:  "garbage collection",
+	7:  "garbage collection scan",
+	8:  "panicwait",
+	9:  "select",
+	10: "select (no cases)",
+	11: "GC assist wait",
+	12: "GC sweep wait",
+	13: "GC scavenge wait",
+	14: "chan receive",
+	15: "chan send",
+	16: "finalizer wait",
+	17: "force gc (idle)",
+	18: "semacquire",
+	19: "sleep",
+	20: "sync.Cond.Wait",
+	21: "timer goroutine (idle)",
+	22: "trace reader (blocked)",
+	23: "wait for GC cycle",
+	24: "GC worker (idle)",
+	25: "preempted",
+	26: "debug call",
+}
+
 var waitReasonMap1_20 = map[uint8]string{
 	0:  "",
 	1:  "GC assist marking",

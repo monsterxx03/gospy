@@ -25,6 +25,7 @@ func init() {
 	registry.Register("1.22", waitReasonMap1_22)
 	registry.Register("1.21", waitReasonMap1_21)
 	registry.Register("1.20", waitReasonMap1_20)
+	registry.Register("1.18", waitReasonMap1_18)
 }
 
 // GetWaitReasonMap returns the wait reason map for the given version
