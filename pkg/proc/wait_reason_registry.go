@@ -25,6 +25,8 @@ func init() {
 	registry.Register("1.22", waitReasonMap1_22)
 	registry.Register("1.21", waitReasonMap1_21)
 	registry.Register("1.20", waitReasonMap1_20)
+	// 19 no change
+	registry.Register("1.19", waitReasonMap1_18)
 	registry.Register("1.18", waitReasonMap1_18)
 }
 
