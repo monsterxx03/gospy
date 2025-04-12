@@ -178,6 +178,7 @@ func (r *commonMemReader) Goroutines() ([]G, error) {
 	return gs, nil
 }
 
+// ai! this function parsed all goroutines, find a effient way to only get target goroutine
 func (r *commonMemReader) getGoroutineByGoid(goid int64) (G, error) {
 	// Get all goroutines
 	gs, err := r.Goroutines()
