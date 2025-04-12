@@ -48,6 +48,28 @@ sudo gospy summary --pid <pid> --json
 - `GET /memstats?pid=<pid>` - Get memory statistics
 - `GET /runtime?pid=<pid>` - Get runtime version info
 
+### MCP Server (Machine Control Protocol)
+
+The MCP server provides an SSE (Server-Sent Events) endpoint for real-time monitoring and control. To enable:
+
+```bash
+sudo gospy serve --enable-mcp --port 8974
+```
+
+Available MCP tools:
+- `goroutines` - Dump goroutines for a process
+  - Parameters:
+    - `pid` (required) - Process ID to inspect
+
+Example usage with MCP client:
+```bash
+# Connect to MCP SSE endpoint
+curl -N http://localhost:8974/mcp/sse
+
+# Sample tool call:
+{"type":"call","tool":"goroutines","params":{"arguments":{"pid":1234}}}
+```
+
 ### Terminal UI Controls
 
 - `q` - Quit
