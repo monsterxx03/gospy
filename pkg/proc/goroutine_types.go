@@ -1,5 +1,7 @@
 package proc
 
+import "debug/gosym"
+
 // Constants for goroutine status (must match runtime2.go exactly)
 const (
 	_Gidle            = iota // 0
@@ -20,6 +22,8 @@ const (
 	_Gscansyscall   = _Gscan + _Gsyscall   // 0x1003
 	_Gscanwaiting   = _Gscan + _Gwaiting   // 0x1004
 	_Gscanpreempted = _Gscan + _Gpreempted // 0x1009
+
+	maxStackDepth = 100
 )
 
 // Status strings that match runtime's representation
@@ -65,4 +69,13 @@ type Stack struct {
 type Sched struct {
 	PC uint64 `json:"pc"` // program counter
 	SP uint64 `json:"sp"` // stack pointer
+}
+
+type StackFrame struct {
+	PC       uint64
+	SP       uint64
+	Function string
+	File     string
+	Line     int
+	Func     *gosym.Func // Store the gosym Func for potential later use
 }

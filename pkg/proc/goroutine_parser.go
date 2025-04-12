@@ -2,7 +2,10 @@ package proc
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
+	"log"
+	"strings"
 
 	bin "github.com/monsterxx03/gospy/pkg/binary"
 )
@@ -239,4 +242,74 @@ func (r *commonMemReader) parseGoroutineFromBatch(data []byte, gAddr uint64) (G,
 	}
 
 	return g, nil
+}
+
+func (r *commonMemReader) getGoroutineStackTack(g *G) ([]StackFrame, error) {
+	bin := r.GetBinaryLoader()
+	ptrSize := bin.PtrSize()
+	var frames []StackFrame
+	currentPC := g.Sched.PC
+	if currentPC == 0 {
+		return nil, errors.New("goroutine sched.pc is 0")
+	}
+	currentSP := g.Sched.SP
+	stackLo := g.Stack.Lo
+	stackHi := g.Stack.Hi
+	for d := range maxStackDepth {
+		if currentPC == 0 {
+			break
+		}
+		if currentSP < stackLo || (currentSP > stackHi && !(d == 0) && currentSP == stackHi) {
+			// allow initial SP = stackHi
+			if currentSP == uint64(ptrSize) && stackLo == 0 && stackHi == 0 {
+				log.Printf("Stopping unwind at depth %d: SP looks like bottom of uninitialized stack (SP=0x%x, Stack=[0x%x, 0x%x])", d, currentSP, stackLo, stackHi)
+				break
+			}
+			loc := bin.PCToFuncLoc(currentPC)
+			if loc != nil {
+				frames = append(frames, StackFrame{
+					PC:       currentPC,
+					SP:       currentSP,
+					Function: loc.Func.Name,
+					File:     loc.File,
+					Line:     loc.Line,
+					Func:     loc.Func,
+				})
+				switch loc.Func.Name {
+				case "runtime.goexit", "runtime.mstart", "runtime.rt0_go", "runtime.main":
+					log.Printf("Stopping unwind: Reached bottom function %s", loc.Func.Name)
+					break
+				}
+				if strings.HasPrefix(loc.Func.Name, "runtime.morestack") || loc.Func.Name == "runtime.systemstack_switch" {
+					log.Printf("Warning: Encountered %s at depth %d. Subsequent frames might be inaccuratge due to simple unwind logic.", loc.Func.Name, d)
+				}
+			}
+			returnPC, err := r.readUint64(currentSP)
+			if err != nil {
+				log.Printf("Stopping unwind: Failed to read PC from SP 0x%x at depth %d: %v", currentSP, d, err)
+				break
+			}
+			callerSP := currentSP + uint64(ptrSize)
+			currentPC = returnPC
+			currentSP = callerSP
+			if currentPC == 0 && d < maxStackDepth-1 {
+				log.Printf("Stopping unwind: Read zero return PC from 0x%x", currentSP-uint64(ptrSize))
+				break
+			}
+
+		}
+	}
+	if len(frames) == 0 && currentPC != 0 {
+		loc := bin.PCToFuncLoc(currentPC)
+		if loc != nil {
+			frames = append(frames, StackFrame{
+				PC:       currentPC,
+				SP:       currentSP,
+				Function: loc.Func.Name,
+				File:     loc.File,
+				Func:     loc.Func,
+			})
+		}
+	}
+	return frames, nil
 }
