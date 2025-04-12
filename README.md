@@ -57,7 +57,7 @@ sudo gospy summary --pid <pid> --json
 
 ### Terminal UI Screenshot
 
-![Terminal UI Screenshot](screenshots/gospy-terminal-ui.png)
+![Terminal UI Screenshot](screenshots/top.png)
 
 ## Building from Source
 
