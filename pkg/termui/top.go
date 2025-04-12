@@ -29,6 +29,7 @@ type TopUI struct {
 	flex         *tview.Flex
 	lastUpdate   time.Time
 	lastDuration time.Duration
+	showDead     bool
 }
 
 func (t *TopUI) updateHelpText(help *tview.TextView) {
@@ -41,7 +42,7 @@ func (t *TopUI) updateHelpText(help *tview.TextView) {
 	help.SetText(baseHelp)
 }
 
-func NewTopUI(pid, interval int, memReader proc.ProcessMemReader) *TopUI {
+func NewTopUI(pid, interval int, showDead bool, memReader proc.ProcessMemReader) *TopUI {
 	app := tview.NewApplication()
 	table := tview.NewTable()
 	table.SetBorders(false).
@@ -54,6 +55,7 @@ func NewTopUI(pid, interval int, memReader proc.ProcessMemReader) *TopUI {
 		pid:       pid,
 		interval:  interval,
 		memReader: memReader,
+		showDead:  showDead,
 	}
 
 	// Create title view
@@ -203,7 +205,7 @@ func (t *TopUI) fetchData() (*proc.Runtime, *proc.MemStat, []proc.G, error) {
 		t.lastMemStat = memStat
 	}
 
-	goroutines, err := t.memReader.Goroutines()
+	goroutines, err := t.memReader.Goroutines(t.showDead)
 	if err != nil {
 		return nil, nil, nil, err
 	}

@@ -16,18 +16,20 @@ import (
 )
 
 type Server struct {
-	port    int
-	readers map[int]proc.ProcessMemReader // pid -> reader cache
-	mu      sync.RWMutex
+	port     int
+	readers  map[int]proc.ProcessMemReader // pid -> reader cache
+	mu       sync.RWMutex
+	showDead bool
 
 	enableMCP bool
 	mcpServer *server.SSEServer
 }
 
-func NewServer(port int, enableMCP bool) *Server {
+func NewServer(port int, showDead bool, enableMCP bool) *Server {
 	s := &Server{
 		port:      port,
 		readers:   make(map[int]proc.ProcessMemReader),
+		showDead:  showDead,
 		enableMCP: enableMCP,
 	}
 	if enableMCP {
@@ -50,7 +52,7 @@ func (s *Server) getMCPSseServer() *server.SSEServer {
 		if err != nil {
 			return nil, err
 		}
-		goroutines, err := reader.Goroutines()
+		goroutines, err := reader.Goroutines(s.showDead)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get goroutines: %w", err)
 		}
@@ -196,7 +198,7 @@ func (s *Server) handleGoroutines(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("failed to create reader: %v", err), http.StatusInternalServerError)
 		return
 	}
-	goroutines, err := reader.Goroutines()
+	goroutines, err := reader.Goroutines(s.showDead)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to get goroutines: %v", err), http.StatusInternalServerError)
 		return

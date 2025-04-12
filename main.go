@@ -165,7 +165,7 @@ func main() {
 					}
 					port := c.Int("port")
 					enableMCP := c.Bool("enable-mcp")
-					apiServer := api.NewServer(port, enableMCP)
+					apiServer := api.NewServer(port, c.Bool("show-dead"), enableMCP)
 					fmt.Printf("Starting API server on port %d\n", port)
 					fmt.Printf("Endpoints:\n")
 					fmt.Printf("  GET /runtime?pid=<PID>     - Get runtime info\n")
@@ -224,7 +224,7 @@ func main() {
 					}
 
 					// Create and run top UI
-					topUI := termui.NewTopUI(pid, interval, memReader)
+					topUI := termui.NewTopUI(pid, interval, c.Bool("show-dead"), memReader)
 					if err := topUI.Run(); err != nil {
 						return fmt.Errorf("top UI error: %w", err)
 					}
