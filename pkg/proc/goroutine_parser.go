@@ -178,6 +178,10 @@ func (r *commonMemReader) Goroutines() ([]G, error) {
 	return gs, nil
 }
 
+func (r *commonMemReader) GetGoroutineStackTraceByGoID(goid int64) ([]StackFrame, error) {
+	// ai! finish it
+}
+
 func (r *commonMemReader) getGoroutineByGoid(goid int64) (G, error) {
 	// Get the address of runtime.allgs symbol
 	allgsAddr, err := r.GetBinaryLoader().FindVariableAddress("runtime.allgs")
@@ -301,7 +305,7 @@ func (r *commonMemReader) parseGoroutineFromBatch(data []byte, gAddr uint64) (G,
 	return g, nil
 }
 
-func (r *commonMemReader) getGoroutineStackTack(g *G) ([]StackFrame, error) {
+func (r *commonMemReader) getGoroutineStackTrace(g *G) ([]StackFrame, error) {
 	bin := r.GetBinaryLoader()
 	ptrSize := bin.PtrSize()
 	var frames []StackFrame
