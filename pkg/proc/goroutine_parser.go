@@ -179,7 +179,19 @@ func (r *commonMemReader) Goroutines() ([]G, error) {
 }
 
 func (r *commonMemReader) GetGoroutineStackTraceByGoID(goid int64) ([]StackFrame, error) {
-	// ai! finish it
+	// First get the goroutine by ID
+	g, err := r.getGoroutineByGoid(goid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find goroutine %d: %w", goid, err)
+	}
+
+	// Then get its stack trace
+	frames, err := r.getGoroutineStackTrace(&g)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stack trace for goroutine %d: %w", goid, err)
+	}
+
+	return frames, nil
 }
 
 func (r *commonMemReader) getGoroutineByGoid(goid int64) (G, error) {
