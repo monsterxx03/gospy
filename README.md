@@ -11,7 +11,7 @@ A tool for inspecting and analyzing running Go processes, including goroutine st
 - Analyze process memory statistics
 - Cross-platform support (Linux and macOS)
 - Terminal UI for interactive inspection
-- HTTP API for programmatic access
+- HTTP API for programmatic access(sse endpoint for MCP server)
 
 ## Installation
 
