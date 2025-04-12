@@ -179,7 +179,20 @@ func (r *commonMemReader) Goroutines() ([]G, error) {
 }
 
 func (r *commonMemReader) getGoroutineByGoid(goid int64) (G, error) {
-	// ai! finish it
+	// Get all goroutines
+	gs, err := r.Goroutines()
+	if err != nil {
+		return G{}, fmt.Errorf("failed to get goroutines: %w", err)
+	}
+
+	// Find the goroutine with matching goid
+	for _, g := range gs {
+		if g.Goid == goid {
+			return g, nil
+		}
+	}
+
+	return G{}, fmt.Errorf("goroutine with goid %d not found", goid)
 }
 
 // parseBasicInfoFromBatch parses basic goroutine info from pre-read batch data
