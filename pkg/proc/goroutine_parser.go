@@ -174,7 +174,7 @@ func (r *commonMemReader) Goroutines() ([]G, error) {
 		}
 		gs = append(gs, g)
 	}
-
+	// ai! sort gs based on goid
 	return gs, nil
 }
 
