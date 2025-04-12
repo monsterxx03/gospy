@@ -226,9 +226,9 @@ func main() {
 			},
 		},
 		{
-			Name:    "stack",
+			Name:  "stack",
 			Aliases: []string{"st"},
-			Usage:   "Get stack trace for a specific goroutine",
+			Usage: "Get stack trace for a specific goroutine",
 			Flags: []cli.Flag{
 				&cli.IntFlag{
 					Name:     "pid",
