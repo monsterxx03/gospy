@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 
 	bin "github.com/monsterxx03/gospy/pkg/binary"
@@ -174,7 +175,12 @@ func (r *commonMemReader) Goroutines() ([]G, error) {
 		}
 		gs = append(gs, g)
 	}
-	// ai! sort gs based on goid
+
+	// Sort goroutines by goid in ascending order
+	sort.Slice(gs, func(i, j int) bool {
+		return gs[i].Goid < gs[j].Goid
+	})
+
 	return gs, nil
 }
 
