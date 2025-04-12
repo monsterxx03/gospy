@@ -134,7 +134,7 @@ func (r *commonMemReader) parseWaitReason(data []byte, gAddr uint64, dwarfLoader
 	return fmt.Sprintf("unknown(%d)", reason)
 }
 
-func (r *commonMemReader) Goroutines() ([]G, error) {
+func (r *commonMemReader) Goroutines(showDead bool) ([]G, error) {
 	// Get the address of runtime.allgs symbol
 	allgsAddr, err := r.GetBinaryLoader().FindVariableAddress("runtime.allgs")
 	if err != nil {
@@ -173,7 +173,9 @@ func (r *commonMemReader) Goroutines() ([]G, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse goroutine at 0x%x: %w", ptr, err)
 		}
-		gs = append(gs, g)
+		if showDead || g.Status != "dead" {
+			gs = append(gs, g)
+		}
 	}
 
 	// Sort goroutines by goid in ascending order

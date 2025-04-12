@@ -68,7 +68,7 @@ func main() {
 					}
 
 					// Get goroutines
-					goroutines, err := memReader.Goroutines()
+					goroutines, err := memReader.Goroutines(false)
 					if err != nil {
 						return fmt.Errorf("failed to get goroutines: %w", err)
 					}
