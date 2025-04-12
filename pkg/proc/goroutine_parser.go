@@ -178,18 +178,57 @@ func (r *commonMemReader) Goroutines() ([]G, error) {
 	return gs, nil
 }
 
-// ai! this function parsed all goroutines, find a effient way to only get target goroutine
 func (r *commonMemReader) getGoroutineByGoid(goid int64) (G, error) {
-	// Get all goroutines
-	gs, err := r.Goroutines()
+	// Get the address of runtime.allgs symbol
+	allgsAddr, err := r.GetBinaryLoader().FindVariableAddress("runtime.allgs")
 	if err != nil {
-		return G{}, fmt.Errorf("failed to get goroutines: %w", err)
+		return G{}, fmt.Errorf("find allgs symbol: %w", err)
 	}
 
-	// Find the goroutine with matching goid
-	for _, g := range gs {
-		if g.Goid == goid {
-			return g, nil
+	// Read the slice of G pointers from runtime.allgs
+	ptrs, err := r.readPtrSlice(r.GetStaticBase() + allgsAddr)
+	if err != nil {
+		return G{}, fmt.Errorf("read allgs slice: %w", err)
+	}
+
+	// Get DWARF loader for struct info
+	dwarfLoader, err := r.GetBinaryLoader().GetDWARFLoader()
+	if err != nil {
+		return G{}, fmt.Errorf("failed to get DWARF loader: %w", err)
+	}
+
+	// Get offsets we'll need
+	goidOffset, err := dwarfLoader.GetStructOffset("runtime.g", "goid")
+	if err != nil {
+		return G{}, fmt.Errorf("failed to get goid offset: %w", err)
+	}
+
+	// Scan through goroutines until we find matching goid
+	for _, ptr := range ptrs {
+		if ptr == 0 {
+			continue
+		}
+
+		// Read just the goid field first
+		goidAddr := ptr + goidOffset
+		currentGoid, err := r.readUint64(goidAddr)
+		if err != nil {
+			continue // Skip if we can't read
+		}
+
+		if int64(currentGoid) == goid {
+			// Found our goroutine - now parse it fully
+			gSize, err := dwarfLoader.GetStructSize("runtime.g")
+			if err != nil {
+				return G{}, fmt.Errorf("failed to get runtime.g size: %w", err)
+			}
+
+			data := make([]byte, gSize)
+			if _, err := r.ReadAt(data, int64(ptr)); err != nil {
+				return G{}, fmt.Errorf("failed to read goroutine at 0x%x: %w", ptr, err)
+			}
+
+			return r.parseGoroutineFromBatch(data, ptr)
 		}
 	}
 
