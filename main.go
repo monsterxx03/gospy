@@ -17,6 +17,14 @@ func main() {
 	app := &cli.App{
 		Name:  "gospy",
 		Usage: "Process monitoring tool for Go applications",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:    "show-dead",
+				Aliases: []string{"d"},
+				Usage:   "Show dead goroutines in output",
+				Value:   false,
+			},
+		},
 		Commands: []*cli.Command{
 			{
 				Name:    "summary",
@@ -68,7 +76,7 @@ func main() {
 					}
 
 					// Get goroutines
-					goroutines, err := memReader.Goroutines(false)
+					goroutines, err := memReader.Goroutines(c.Bool("show-dead"))
 					if err != nil {
 						return fmt.Errorf("failed to get goroutines: %w", err)
 					}
