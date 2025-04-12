@@ -224,61 +224,61 @@ func main() {
 					return nil
 				},
 			},
-		},
-		{
-			Name:  "stack",
-			Aliases: []string{"st"},
-			Usage: "Get stack trace for a specific goroutine",
-			Flags: []cli.Flag{
-				&cli.IntFlag{
-					Name:     "pid",
-					Aliases:  []string{"p"},
-					Usage:    "Target process ID",
-					Required: true,
+			{
+				Name:    "stack",
+				Aliases: []string{"st"},
+				Usage:   "Get stack trace for a specific goroutine(experimental)",
+				Flags: []cli.Flag{
+					&cli.IntFlag{
+						Name:     "pid",
+						Aliases:  []string{"p"},
+						Usage:    "Target process ID",
+						Required: true,
+					},
+					&cli.Int64Flag{
+						Name:     "goid",
+						Aliases:  []string{"g"},
+						Usage:    "Goroutine ID to inspect",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:    "bin",
+						Aliases: []string{"b"},
+						Usage:   "Path to binary file (optional)",
+					},
 				},
-				&cli.Int64Flag{
-					Name:     "goid",
-					Aliases:  []string{"g"},
-					Usage:    "Goroutine ID to inspect",
-					Required: true,
-				},
-				&cli.StringFlag{
-					Name:    "bin",
-					Aliases: []string{"b"},
-					Usage:   "Path to binary file (optional)",
-				},
-			},
-			Action: func(c *cli.Context) error {
-				if os.Geteuid() != 0 {
-					return fmt.Errorf("must be run as root")
-				}
-				pid := c.Int("pid")
-				goid := c.Int64("goid")
-				binPath := c.String("bin")
-
-				// Create memory reader
-				memReader, err := proc.NewProcessMemReader(pid, binPath)
-				if err != nil {
-					return fmt.Errorf("failed to create memory reader: %w", err)
-				}
-				defer memReader.Close()
-
-				// Get stack trace
-				frames, err := memReader.GetGoroutineStackTraceByGoID(goid)
-				if err != nil {
-					return fmt.Errorf("failed to get stack trace for goroutine %d: %w", goid, err)
-				}
-
-				// Print stack trace
-				fmt.Printf("\nStack trace for goroutine %d:\n", goid)
-				for i, frame := range frames {
-					fmt.Printf("%2d. %s\n", i+1, frame.Function)
-					if frame.File != "" && frame.Line > 0 {
-						fmt.Printf("      %s:%d\n", frame.File, frame.Line)
+				Action: func(c *cli.Context) error {
+					if os.Geteuid() != 0 {
+						return fmt.Errorf("must be run as root")
 					}
-				}
+					pid := c.Int("pid")
+					goid := c.Int64("goid")
+					binPath := c.String("bin")
 
-				return nil
+					// Create memory reader
+					memReader, err := proc.NewProcessMemReader(pid, binPath)
+					if err != nil {
+						return fmt.Errorf("failed to create memory reader: %w", err)
+					}
+					defer memReader.Close()
+
+					// Get stack trace
+					frames, err := memReader.GetGoroutineStackTraceByGoID(goid)
+					if err != nil {
+						return fmt.Errorf("failed to get stack trace for goroutine %d: %w", goid, err)
+					}
+
+					// Print stack trace
+					fmt.Printf("\nStack trace for goroutine %d:\n", goid)
+					for i, frame := range frames {
+						fmt.Printf("%2d. %s\n", i+1, frame.Function)
+						if frame.File != "" && frame.Line > 0 {
+							fmt.Printf("      %s:%d\n", frame.File, frame.Line)
+						}
+					}
+
+					return nil
+				},
 			},
 		},
 		Action: func(c *cli.Context) error {

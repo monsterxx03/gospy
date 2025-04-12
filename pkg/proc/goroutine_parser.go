@@ -186,7 +186,7 @@ func (r *commonMemReader) GetGoroutineStackTraceByGoID(goid int64) ([]StackFrame
 	}
 
 	// Then get its stack trace
-	frames, err := r.getGoroutineStackTrace(&g)
+	frames, err := r.getGoroutineStackTrace(g)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stack trace for goroutine %d: %w", goid, err)
 	}
@@ -317,7 +317,8 @@ func (r *commonMemReader) parseGoroutineFromBatch(data []byte, gAddr uint64) (G,
 	return g, nil
 }
 
-func (r *commonMemReader) getGoroutineStackTrace(g *G) ([]StackFrame, error) {
+func (r *commonMemReader) getGoroutineStackTrace(g G) ([]StackFrame, error) {
+	// it's fragle
 	bin := r.GetBinaryLoader()
 	ptrSize := bin.PtrSize()
 	var frames []StackFrame
@@ -330,6 +331,7 @@ func (r *commonMemReader) getGoroutineStackTrace(g *G) ([]StackFrame, error) {
 	stackHi := g.Stack.Hi
 	for d := range maxStackDepth {
 		if currentPC == 0 {
+			log.Printf("Stopping unwind: PC is zero")
 			break
 		}
 		if currentSP < stackLo || (currentSP > stackHi && !(d == 0) && currentSP == stackHi) {
@@ -338,42 +340,43 @@ func (r *commonMemReader) getGoroutineStackTrace(g *G) ([]StackFrame, error) {
 				log.Printf("Stopping unwind at depth %d: SP looks like bottom of uninitialized stack (SP=0x%x, Stack=[0x%x, 0x%x])", d, currentSP, stackLo, stackHi)
 				break
 			}
-			loc := bin.PCToFuncLoc(currentPC)
-			if loc != nil {
-				frames = append(frames, StackFrame{
-					PC:       currentPC,
-					SP:       currentSP,
-					Function: loc.Func.Name,
-					File:     loc.File,
-					Line:     loc.Line,
-					Func:     loc.Func,
-				})
-				switch loc.Func.Name {
-				case "runtime.goexit", "runtime.mstart", "runtime.rt0_go", "runtime.main":
-					log.Printf("Stopping unwind: Reached bottom function %s", loc.Func.Name)
-					break
-				}
-				if strings.HasPrefix(loc.Func.Name, "runtime.morestack") || loc.Func.Name == "runtime.systemstack_switch" {
-					log.Printf("Warning: Encountered %s at depth %d. Subsequent frames might be inaccuratge due to simple unwind logic.", loc.Func.Name, d)
-				}
-			}
-			returnPC, err := r.readUint64(currentSP)
-			if err != nil {
-				log.Printf("Stopping unwind: Failed to read PC from SP 0x%x at depth %d: %v", currentSP, d, err)
-				break
-			}
-			callerSP := currentSP + uint64(ptrSize)
-			currentPC = returnPC
-			currentSP = callerSP
-			if currentPC == 0 && d < maxStackDepth-1 {
-				log.Printf("Stopping unwind: Read zero return PC from 0x%x", currentSP-uint64(ptrSize))
-				break
-			}
 
 		}
+		loc := bin.PCToFuncLoc(currentPC - r.GetStaticBase())
+		if loc != nil {
+			frames = append(frames, StackFrame{
+				PC:       currentPC,
+				SP:       currentSP,
+				Function: loc.Func.Name,
+				File:     loc.File,
+				Line:     loc.Line,
+				Func:     loc.Func,
+			})
+			switch loc.Func.Name {
+			case "runtime.goexit", "runtime.mstart", "runtime.rt0_go", "runtime.main":
+				log.Printf("Stopping unwind: Reached bottom function %s", loc.Func.Name)
+				break
+			}
+			if strings.HasPrefix(loc.Func.Name, "runtime.morestack") || loc.Func.Name == "runtime.systemstack_switch" {
+				log.Printf("Warning: Encountered %s at depth %d. Subsequent frames might be inaccuratge due to simple unwind logic.", loc.Func.Name, d)
+			}
+		}
+		returnPC, err := r.readUint64(currentSP)
+		if err != nil {
+			log.Printf("Stopping unwind: Failed to read PC from SP 0x%x at depth %d: %v", currentSP, d, err)
+			break
+		}
+		callerSP := currentSP + uint64(ptrSize)
+		currentPC = returnPC
+		currentSP = callerSP
+		if currentPC == 0 && d < maxStackDepth-1 {
+			log.Printf("Stopping unwind: Read zero return PC from 0x%x", currentSP-uint64(ptrSize))
+			break
+		}
 	}
+
 	if len(frames) == 0 && currentPC != 0 {
-		loc := bin.PCToFuncLoc(currentPC)
+		loc := bin.PCToFuncLoc(currentPC - r.GetStaticBase())
 		if loc != nil {
 			frames = append(frames, StackFrame{
 				PC:       currentPC,
