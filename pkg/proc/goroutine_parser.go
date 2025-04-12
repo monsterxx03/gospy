@@ -178,6 +178,10 @@ func (r *commonMemReader) Goroutines() ([]G, error) {
 	return gs, nil
 }
 
+func (r *commonMemReader) getGoroutineByGoid(goid int64) (G, error) {
+	// ai! finish it
+}
+
 // parseBasicInfoFromBatch parses basic goroutine info from pre-read batch data
 func (r *commonMemReader) parseBasicInfoFromBatch(g *G, data []byte, gAddr uint64, dwarfLoader bin.DWARFLoader) error {
 	// Parse Goid
