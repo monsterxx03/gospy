@@ -172,7 +172,7 @@ func main() {
 					fmt.Printf("  GET /goroutines?pid=<PID> - Get goroutines list\n")
 					fmt.Printf("  GET /memstats?pid=<PID>   - Get memory stats\n")
 					if enableMCP {
-						fmt.Printf("  GET /mcp/sse   - MCP SSE endpoint\n")
+						fmt.Printf("  GET /mcp   - MCP SSE endpoint\n")
 					}
 					return apiServer.Start()
 				},

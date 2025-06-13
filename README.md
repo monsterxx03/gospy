@@ -2,6 +2,7 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/monsterxx03/gospy)](https://goreportcard.com/report/github.com/monsterxx03/gospy)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=gospy&config=eyJ1cmwiOiJodHRwOi8vbG9jYWxob3N0Ojg5NzQvbWNwIn0%3D)
 
 A tool for inspecting and analyzing running Go processes, including goroutine states, memory statistics, and binary information.
 
@@ -11,7 +12,8 @@ A tool for inspecting and analyzing running Go processes, including goroutine st
 - Analyze process memory statistics
 - Cross-platform support (Linux and macOS)
 - Terminal UI for interactive inspection
-- HTTP API for programmatic access(sse endpoint for MCP server)
+- HTTP API for programmatic access
+- mcp server
 
 ## Installation
 
@@ -50,7 +52,7 @@ sudo gospy summary --pid <pid> --json
 
 ### MCP Server
 
-The MCP server provides an SSE (Server-Sent Events) endpoint. To enable:
+The MCP server provides an http (streamableHTTP) endpoint. To enable:
 
 ```bash
 >>> sudo gospy serve --enable-mcp --port 8974
@@ -60,7 +62,7 @@ Endpoints:
   GET /runtime?pid=<PID>     - Get runtime info
   GET /goroutines?pid=<PID> - Get goroutines list
   GET /memstats?pid=<PID>   - Get memory stats
-  GET /mcp/sse   - MCP SSE endpoint
+  GET /mcp   - MCP http endpoint
 
 ```
 

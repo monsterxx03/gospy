@@ -22,7 +22,7 @@ type Server struct {
 	showDead bool
 
 	enableMCP bool
-	mcpServer *server.SSEServer
+	mcpServer *server.StreamableHTTPServer
 }
 
 func NewServer(port int, showDead bool, enableMCP bool) *Server {
@@ -33,12 +33,12 @@ func NewServer(port int, showDead bool, enableMCP bool) *Server {
 		enableMCP: enableMCP,
 	}
 	if enableMCP {
-		s.mcpServer = s.getMCPSseServer()
+		s.mcpServer = s.getMCPSServer()
 	}
 	return s
 }
 
-func (s *Server) getMCPSseServer() *server.SSEServer {
+func (s *Server) getMCPSServer() *server.StreamableHTTPServer {
 	ms := server.NewMCPServer(
 		"gospy mcp server",
 		"1.0.0",
@@ -47,7 +47,7 @@ func (s *Server) getMCPSseServer() *server.SSEServer {
 		mcp.WithDescription("dump golang process's goroutines"),
 		mcp.WithNumber("pid", mcp.Required(), mcp.Description("process pid")))
 	ms.AddTool(goroutineTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		pid := int(request.Params.Arguments["pid"].(float64))
+		pid := int(request.GetArguments()["pid"].(float64))
 		reader, err := s.getReader(pid)
 		if err != nil {
 			return nil, err
@@ -67,7 +67,7 @@ func (s *Server) getMCPSseServer() *server.SSEServer {
 		mcp.WithDescription("dump golang process's memory statistics"),
 		mcp.WithNumber("pid", mcp.Required(), mcp.Description("process pid")))
 	ms.AddTool(memstatsTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		pid := int(request.Params.Arguments["pid"].(float64))
+		pid := int(request.GetArguments()["pid"].(float64))
 		reader, err := s.getReader(pid)
 		if err != nil {
 			return nil, err
@@ -87,7 +87,7 @@ func (s *Server) getMCPSseServer() *server.SSEServer {
 		mcp.WithDescription("get golang process's runtime info"),
 		mcp.WithNumber("pid", mcp.Required(), mcp.Description("process pid")))
 	ms.AddTool(runtimeTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		pid := int(request.Params.Arguments["pid"].(float64))
+		pid := int(request.GetArguments()["pid"].(float64))
 		reader, err := s.getReader(pid)
 		if err != nil {
 			return nil, err
@@ -107,7 +107,7 @@ func (s *Server) getMCPSseServer() *server.SSEServer {
 		mcp.WithDescription("find process IDs by process name"),
 		mcp.WithString("name", mcp.Required(), mcp.Description("process name to search for")))
 	ms.AddTool(pgrepTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		name := request.Params.Arguments["name"].(string)
+		name := request.GetArguments()["name"].(string)
 		cmd := exec.Command("pgrep", name)
 		output, err := cmd.Output()
 		if err != nil {
@@ -121,7 +121,7 @@ func (s *Server) getMCPSseServer() *server.SSEServer {
 		return mcp.NewToolResultText(string(data)), nil
 	})
 
-	return server.NewSSEServer(ms, server.WithBasePath("/mcp"))
+	return server.NewStreamableHTTPServer(ms)
 }
 
 func (s *Server) getReader(pid int) (proc.ProcessMemReader, error) {
@@ -159,7 +159,7 @@ func (s *Server) Start() error {
 	http.HandleFunc("/goroutines", s.handleGoroutines)
 	http.HandleFunc("/memstats", s.handleMemStats)
 	if s.enableMCP {
-		http.Handle("/mcp/", s.mcpServer)
+		http.Handle("/mcp", s.mcpServer)
 	}
 	return http.ListenAndServe(fmt.Sprintf(":%d", s.port), nil)
 }
