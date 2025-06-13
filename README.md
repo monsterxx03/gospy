@@ -1,5 +1,6 @@
 # Go Process Inspector
 
+[![smithery badge](https://smithery.ai/badge/@monsterxx03/gospy)](https://smithery.ai/server/@monsterxx03/gospy)
 [![Go Report Card](https://goreportcard.com/badge/github.com/monsterxx03/gospy)](https://goreportcard.com/report/github.com/monsterxx03/gospy)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=gospy&config=eyJ1cmwiOiJodHRwOi8vbG9jYWxob3N0Ojg5NzQvbWNwIn0%3D)
@@ -17,6 +18,15 @@ A tool for inspecting and analyzing running Go processes, including goroutine st
 
 ## Installation
 
+### Installing via Smithery
+
+To install Go Process Inspector for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@monsterxx03/gospy):
+
+```bash
+npx -y @smithery/cli install @monsterxx03/gospy --client claude
+```
+
+### Manual Installation
 ```bash
 go install github.com/monsterxx03/gospy@latest
 ```
