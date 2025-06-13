@@ -33,12 +33,12 @@ func NewServer(port int, showDead bool, enableMCP bool) *Server {
 		enableMCP: enableMCP,
 	}
 	if enableMCP {
-		s.mcpServer = s.getMCPSServer()
+		s.mcpServer = s.getMCPServer()
 	}
 	return s
 }
 
-func (s *Server) getMCPSServer() *server.StreamableHTTPServer {
+func (s *Server) getMCPServer() *server.StreamableHTTPServer {
 	ms := server.NewMCPServer(
 		"gospy mcp server",
 		"1.0.0",
