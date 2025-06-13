@@ -1,0 +1,8 @@
+# Smithery configuration file: https://smithery.ai/docs/build/project-config
+
+startCommand:
+  type: http
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    {}
+  exampleConfig: {}
