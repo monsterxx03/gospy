@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"debug/dwarf"
+	"sort"
 	"strings"
 
 	bin "github.com/monsterxx03/gospy/pkg/binary"
@@ -16,6 +17,26 @@ type HeapObject struct {
 	Size  uint64 `json:"size"`
 	Type  string `json:"type"`
 	Guess bool   `json:"guess"` // whether Type is heuristic guess
+}
+
+// HeapTypeStat is aggregated statistics for a type
+type HeapTypeStat struct {
+	Type        string `json:"type"`
+	Objects     uint64 `json:"objects"`
+	Bytes       uint64 `json:"bytes"`
+	IsEstimated bool   `json:"estimated"`
+}
+
+// HeapScanOptions controls type distribution scan
+type HeapScanOptions struct {
+	// Sample every Nth span to speed up; 1 means scan all
+	SpanSample int
+	// Ignore objects smaller than this many bytes
+	MinObjectSize uint64
+	// Limit number of spans to scan (0 = no limit)
+	MaxSpans int
+	// Return only the top N types by bytes (0 = all)
+	TopN int
 }
 
 // HeapObjects walks the runtime heap metadata to enumerate allocated objects.
@@ -262,4 +283,158 @@ func (r *commonMemReader) resolveTypeByHeader(typeAddrToName map[uint64]string, 
 		return name, true
 	}
 	return "", false
+}
+
+// HeapTypes aggregates type distribution with options for speed.
+func (r *commonMemReader) HeapTypes(opts HeapScanOptions) ([]HeapTypeStat, error) {
+	dwarfLoader, err := r.GetBinaryLoader().GetDWARFLoader()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get DWARF loader: %w", err)
+	}
+	mheapAddr, err := r.GetBinaryLoader().FindVariableAddress("runtime.mheap_")
+	if err != nil {
+		return nil, fmt.Errorf("failed to find runtime.mheap_: %w", err)
+	}
+	mheapBase := r.GetStaticBase() + mheapAddr
+
+	allspansOff, err := dwarfLoader.GetStructOffset("runtime.mheap", "allspans")
+	if err != nil {
+		return nil, fmt.Errorf("get mheap.allspans offset: %w", err)
+	}
+	spanPtrs, err := r.readPtrSlice(mheapBase + allspansOff)
+	if err != nil {
+		return nil, fmt.Errorf("read mheap.allspans slice: %w", err)
+	}
+	if len(spanPtrs) == 0 {
+		return nil, nil
+	}
+
+	mspanSize, err := dwarfLoader.GetStructSize("runtime.mspan")
+	if err != nil {
+		return nil, fmt.Errorf("get runtime.mspan size: %w", err)
+	}
+	baseOff, err := firstOffset(dwarfLoader, "runtime.mspan", []string{"base", "startAddr"})
+	if err != nil {
+		return nil, err
+	}
+	nelemsOff, err := firstOffset(dwarfLoader, "runtime.mspan", []string{"nelems"})
+	if err != nil {
+		return nil, err
+	}
+	elemsizeOff, err := firstOffset(dwarfLoader, "runtime.mspan", []string{"elemsize"})
+	if err != nil {
+		return nil, err
+	}
+	stateOff, _ := firstOffset(dwarfLoader, "runtime.mspan", []string{"state"})
+	allocBitsOff, _ := firstOffset(dwarfLoader, "runtime.mspan", []string{"allocBits"})
+
+	// Prepare helpers
+	sizeToTypes := buildSizeToTypesMap(dwarfLoader)
+	typeAddrToName := r.buildTypeSymbolMap()
+	ptrSize := r.GetBinaryLoader().PtrSize()
+
+	// Sampling controls
+	spanSample := opts.SpanSample
+	if spanSample <= 0 {
+		spanSample = 1
+	}
+	maxSpans := opts.MaxSpans
+	scanned := 0
+
+	// Aggregates
+	typeToStat := make(map[string]*HeapTypeStat)
+
+	// Batch-read spans in chunks to reduce ReadAt calls
+	data, err := r.readPtrBatch(spanPtrs, mspanSize)
+	if err != nil {
+		return nil, fmt.Errorf("read mspan batch: %w", err)
+	}
+
+	for i, ptr := range spanPtrs {
+		if ptr == 0 {
+			continue
+		}
+		if i%spanSample != 0 {
+			continue
+		}
+		if maxSpans > 0 && scanned >= maxSpans {
+			break
+		}
+		scanned++
+
+		sd := data[i*int(mspanSize) : (i+1)*int(mspanSize)]
+
+		if stateOff != 0 {
+			st := sd[int(stateOff)]
+			if st != 1 { // only in-use spans
+				continue
+			}
+		}
+		base := binary.LittleEndian.Uint64(sd[int(baseOff):])
+		if base == 0 {
+			continue
+		}
+		nelems := binary.LittleEndian.Uint32(sd[int(nelemsOff):])
+		elemsize := binary.LittleEndian.Uint32(sd[int(elemsizeOff):])
+		if nelems == 0 || elemsize == 0 {
+			continue
+		}
+		objSize := uint64(elemsize)
+		if opts.MinObjectSize > 0 && objSize < opts.MinObjectSize {
+			continue
+		}
+
+		var allocBitsAddr uint64
+		if allocBitsOff != 0 {
+			if ptrSize == 8 {
+				allocBitsAddr = binary.LittleEndian.Uint64(sd[int(allocBitsOff):])
+			} else {
+				allocBitsAddr = uint64(binary.LittleEndian.Uint32(sd[int(allocBitsOff):]))
+			}
+		}
+
+		for j := uint32(0); j < nelems; j++ {
+			if allocBitsAddr != 0 {
+				byteIdx := j / 8
+				bitMask := byte(1 << (j % 8))
+				b, err := r.readUint8(allocBitsAddr + uint64(byteIdx))
+				if err != nil {
+					continue
+				}
+				if (b & bitMask) == 0 {
+					continue
+				}
+			}
+			objAddr := base + uint64(j)*objSize
+			// Fast exact type (header) or fallback size match
+			tname, ok := r.resolveTypeByHeader(typeAddrToName, objAddr)
+			guessed := false
+			if !ok {
+				tname, guessed = matchTypeBySize(sizeToTypes, objSize)
+				if tname == "" {
+					tname = "<unknown>"
+					guessed = true
+				}
+			}
+			st := typeToStat[tname]
+			if st == nil {
+				st = &HeapTypeStat{Type: tname}
+				typeToStat[tname] = st
+			}
+			st.Objects++
+			st.Bytes += objSize
+			st.IsEstimated = st.IsEstimated || guessed
+		}
+	}
+
+	// Convert and sort by Bytes desc; apply TopN
+	stats := make([]HeapTypeStat, 0, len(typeToStat))
+	for _, v := range typeToStat {
+		stats = append(stats, *v)
+	}
+	sort.Slice(stats, func(i, j int) bool { return stats[i].Bytes > stats[j].Bytes })
+	if opts.TopN > 0 && len(stats) > opts.TopN {
+		stats = stats[:opts.TopN]
+	}
+	return stats, nil
 }

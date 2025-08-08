@@ -87,6 +87,49 @@ func main() {
 				},
 			},
 			{
+				Name:    "heaptypes",
+				Aliases: []string{"ht"},
+				Usage:   "Show heap type distribution fast (sampling)",
+				Flags: []cli.Flag{
+					&cli.IntFlag{Name: "pid", Aliases: []string{"p"}, Usage: "Target process ID", Required: true},
+					&cli.IntFlag{Name: "span-sample", Aliases: []string{"s"}, Usage: "Sample every Nth span (1=all)", Value: 4},
+					&cli.Uint64Flag{Name: "min-size", Aliases: []string{"m"}, Usage: "Ignore objects smaller than bytes", Value: 0},
+					&cli.IntFlag{Name: "max-spans", Usage: "Max spans to scan (0=all)", Value: 0},
+					&cli.IntFlag{Name: "top", Aliases: []string{"n"}, Usage: "Show top N types by bytes (0=all)", Value: 20},
+					&cli.BoolFlag{Name: "json", Aliases: []string{"j"}, Usage: "Output in JSON"},
+				},
+				Action: func(c *cli.Context) error {
+					if os.Geteuid() != 0 {
+						return fmt.Errorf("must be run as root")
+					}
+					pid := c.Int("pid")
+					memReader, err := proc.NewProcessMemReader(pid, "")
+					if err != nil {
+						return fmt.Errorf("failed to create memory reader: %w", err)
+					}
+					defer memReader.Close()
+					opts := proc.HeapScanOptions{SpanSample: c.Int("span-sample"), MinObjectSize: c.Uint64("min-size"), MaxSpans: c.Int("max-spans"), TopN: c.Int("top")}
+					stats, err := memReader.HeapTypes(opts)
+					if err != nil {
+						return err
+					}
+					if c.Bool("json") {
+						enc := json.NewEncoder(os.Stdout)
+						enc.SetIndent("", "  ")
+						return enc.Encode(stats)
+					}
+					fmt.Printf("Type distribution (top %d, sample=%d, min=%d)\n", c.Int("top"), c.Int("span-sample"), c.Uint64("min-size"))
+					for _, s := range stats {
+						est := ""
+						if s.IsEstimated {
+							est = " ~"
+						}
+						fmt.Printf("%10d objs %12d bytes%s  %s\n", s.Objects, s.Bytes, est, s.Type)
+					}
+					return nil
+				},
+			},
+			{
 				Name:    "summary",
 				Aliases: []string{"s"},
 				Usage:   "Get process summary information",

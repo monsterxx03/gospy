@@ -14,4 +14,6 @@ type ProcessMemReader interface {
 	MemStat() (*MemStat, error)
 	// HeapObjects returns allocated heap objects (address and size). If limit > 0, stops after collecting that many objects.
 	HeapObjects(limit int) ([]HeapObject, error)
+	// HeapTypes returns aggregated type distribution. Options control speed/accuracy tradeoffs.
+	HeapTypes(opts HeapScanOptions) ([]HeapTypeStat, error)
 }
