@@ -158,6 +158,7 @@ func (s *Server) Start() error {
 	http.HandleFunc("/runtime", s.handleRuntime)
 	http.HandleFunc("/goroutines", s.handleGoroutines)
 	http.HandleFunc("/memstats", s.handleMemStats)
+	http.HandleFunc("/heap", s.handleHeap)
 	if s.enableMCP {
 		http.Handle("/mcp", s.mcpServer)
 	}
@@ -227,6 +228,34 @@ func (s *Server) handleMemStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, memStats)
+}
+
+func (s *Server) handleHeap(w http.ResponseWriter, r *http.Request) {
+	pid, err := getPID(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	reader, err := s.getReader(pid)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to create reader: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// optional limit query param
+	limit := 0
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil {
+			limit = v
+		}
+	}
+	objs, err := reader.HeapObjects(limit)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("failed to dump heap: %v", err), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, objs)
 }
 
 func getPID(r *http.Request) (int, error) {

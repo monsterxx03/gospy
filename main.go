@@ -27,6 +27,66 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			{
+				Name:    "heap",
+				Aliases: []string{"hp"},
+				Usage:   "Dump allocated heap objects (experimental)",
+				Flags: []cli.Flag{
+					&cli.IntFlag{
+						Name:     "pid",
+						Aliases:  []string{"p"},
+						Usage:    "Target process ID",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:    "bin",
+						Aliases: []string{"b"},
+						Usage:   "Path to binary file (optional)",
+					},
+					&cli.IntFlag{
+						Name:    "limit",
+						Aliases: []string{"l"},
+						Usage:   "Maximum number of objects to dump (0 for all)",
+						Value:   0,
+					},
+					&cli.BoolFlag{
+						Name:    "json",
+						Aliases: []string{"j"},
+						Usage:   "Output in JSON format",
+					},
+				},
+				Action: func(c *cli.Context) error {
+					if os.Geteuid() != 0 {
+						return fmt.Errorf("must be run as root")
+					}
+					pid := c.Int("pid")
+					binPath := c.String("bin")
+					limit := c.Int("limit")
+
+					memReader, err := proc.NewProcessMemReader(pid, binPath)
+					if err != nil {
+						return fmt.Errorf("failed to create memory reader: %w", err)
+					}
+					defer memReader.Close()
+
+					objs, err := memReader.HeapObjects(limit)
+					if err != nil {
+						return fmt.Errorf("heap dump failed: %w", err)
+					}
+
+					if c.Bool("json") {
+						enc := json.NewEncoder(os.Stdout)
+						enc.SetIndent("", "  ")
+						return enc.Encode(objs)
+					}
+
+					fmt.Printf("Dumped %d heap objects\n", len(objs))
+					for i, o := range objs {
+						fmt.Printf("%6d: 0x%x size=%d type=%s\n", i+1, o.Addr, o.Size, o.Type)
+					}
+					return nil
+				},
+			},
+			{
 				Name:    "summary",
 				Aliases: []string{"s"},
 				Usage:   "Get process summary information",

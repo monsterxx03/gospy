@@ -141,3 +141,8 @@ func (d *dwarfLoader) GetNestedOffset(outerType, outerField, innerField string) 
 
 	return outerOffset + innerOffset, nil
 }
+
+// Raw returns the underlying dwarf.Data
+func (d *dwarfLoader) Raw() (*dwarf.Data, error) {
+	return d.load()
+}

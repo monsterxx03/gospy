@@ -1,6 +1,7 @@
 package binary
 
 import (
+	"debug/dwarf"
 	"debug/gosym"
 	"errors"
 	"fmt"
@@ -22,6 +23,8 @@ type DWARFLoader interface {
 	GetNestedOffset(outerType, outerField, innerField string) (uint64, error)
 	// Get size of a struct type
 	GetStructSize(typeName string) (uint64, error)
+	// Raw exposes the underlying *dwarf.Data for advanced queries
+	Raw() (*dwarf.Data, error)
 }
 
 type BinaryLoader interface {
